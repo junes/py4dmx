@@ -30,7 +30,7 @@ __status__ = 'Development'
 
 ## brief description
 """
-The aim of the script isto prove a set of python functions to play with
+The aim of the script is to provide a set of python functions to play with
 DeepaMehta's REST API.
 
 When creating new topics, the script checks for exisiting topics with the same
