@@ -1,0 +1,47 @@
+{
+    "type_uri": "dm4.contacts.person",
+    "childs": {
+        "dm4.contacts.person_name": {
+            "dm4.contacts.first_name": "Berta",
+            "dm4.contacts.last_name": "Baum"
+        },
+        "dm4.contacts.phone_number": [
+            {
+                "value": "1 234 567890",
+                "assoc": {
+                    "childs": {
+                        "dm4.contacts.phone_label": "ref_uri:dm4.contacts.home_phone"
+                    }
+                }
+            }
+        ],
+        "dm4.contacts.address": [
+            {
+                "childs": {
+                    "dm4.contacts.street": "Parkstr. 3",
+                    "dm4.contacts.postal_code": "13187",
+                    "dm4.contacts.city": "Berlin",
+                    "dm4.contacts.country": "Germany"
+                },
+                "assoc": {
+                    "childs": {
+                        "dm4.contacts.address_label": "ref_uri:dm4.contacts.home_address"
+                    }
+                }
+            },
+            {
+                "childs": {
+                    "dm4.contacts.street": "Kinzigstr. 10",
+                    "dm4.contacts.postal_code": "10247",
+                    "dm4.contacts.city": "Berlin",
+                    "dm4.contacts.country": "Germany"
+                },
+                "assoc": {
+                    "childs": {
+                        "dm4.contacts.address_label": "ref_uri:dm4.contacts.work_address"
+                    }
+                }
+            }
+        ]
+    }
+}
