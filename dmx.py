@@ -809,16 +809,16 @@ def main(args):
 
     parser = argparse.ArgumentParser(description = 'This is a Python script \
              for DeepaMehta by Juergen Neumann <juergen@junes.eu>.')
-    parser.add_argument('-b','--by_type', type=str,help='Get all items of a TopicType.', required=False)
-    parser.add_argument('-c','--create_user', help='Create a user.', action='store_true', required=False, default=None)
+    parser.add_argument('-b','--by_type', type=str,help='Get all items of a TopicType by its topic.type.uri.', required=False)
+    parser.add_argument('-c','--create_user', help='Create a user with -u username and -p password.', action='store_true', required=False, default=None)
     parser.add_argument('-d','--delete_topic', type=int, help='Detele a topic by id.', required=False)
     parser.add_argument('-f','--file', type=str,help='Read payload from json file.', required=False)
-    parser.add_argument('-m','--member', help='Create a new workspace membership.', action='store_true', required=False, default=None)
+    parser.add_argument('-m','--member', help='Create a new workspace membership with -w workspace and -u username.', action='store_true', required=False, default=None)
     parser.add_argument('-p','--password', type=str, help='Provide a password.', required=False)
     parser.add_argument('-r','--get_related', type=int, help='Get all related items of a topic id.', required=False)
     parser.add_argument('-t','--get_topic', type=int, help='Get all data of a topic id.', required=False)
     parser.add_argument('-u','--user', type=str, help='Provide a username.', required=False)
-    parser.add_argument('-w','--workspace', type=str, help='Create a new workspace by name.', required=False)
+    parser.add_argument('-w','--workspace', type=str, help='Create a new workspace by name with -T type.', required=False)
     parser.add_argument('-T','--ws_type', type=str, help='Define Type of the new workspace.', required=False)
     args = parser.parse_args()
     argsdict = vars(args)
@@ -880,6 +880,10 @@ def main(args):
             pretty_print(data)
         else:
             print('no')
+
+    if len(sys.argv) < 2:
+        parser.print_usage()
+        parser.exit(1)
 
 
 if __name__ == '__main__':
