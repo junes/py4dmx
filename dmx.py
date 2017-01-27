@@ -40,8 +40,10 @@ So far the script has been tested and developed for objects with simple
 cardinality, eg. one address, one telephone number, etc.
 
 There are still some issues when there is more than one address in a composite.
+Creating complex composites (like the provided json person example) is currently
+broken.
 
-jpn - 20161009
+jpn - 20170127
 
 """
 
@@ -747,7 +749,7 @@ def deep_inspect(obj):
                     # delete_topic(topics[k])
                     #################
 
-    def digger(obj, nested_level=0):
+    def __digger(obj, nested_level=0):
         global next_key
         global next_value
         nested_level += 1
@@ -808,11 +810,13 @@ def main(args):
     """
 
     parser = argparse.ArgumentParser(description = 'This is a Python script \
-             for DeepaMehta by Juergen Neumann <juergen@junes.eu>.')
+             for DeepaMehta by Juergen Neumann <juergen@junes.eu>. It is free \
+             software licensed under the GNU General Public License Version 3 \
+             and comes with ABSOLUTELY NO WARRANTY.')
     parser.add_argument('-b','--by_type', type=str,help='Get all items of a TopicType by its topic.type.uri.', required=False)
     parser.add_argument('-c','--create_user', help='Create a user with -u username and -p password.', action='store_true', required=False, default=None)
     parser.add_argument('-d','--delete_topic', type=int, help='Detele a topic by id.', required=False)
-    parser.add_argument('-f','--file', type=str,help='Read payload from json file.', required=False)
+    parser.add_argument('-f','--file', type=str,help='Creates a new topic from json file.', required=False)
     parser.add_argument('-m','--member', help='Create a new workspace membership with -w workspace and -u username.', action='store_true', required=False, default=None)
     parser.add_argument('-p','--password', type=str, help='Provide a password.', required=False)
     parser.add_argument('-r','--get_related', type=int, help='Get all related items of a topic id.', required=False)
@@ -834,9 +838,11 @@ def main(args):
         if payload_len > 0:
             # dump(payload)
             deep_inspect(payload)
-        # write data
-        dm_action_id = (send_data(payload))
-        print("CREATED: %s" % dm_action_id)
+            # write data
+            dm_action_id = (send_data(payload))
+            print("CREATED: %s" % dm_action_id)
+        else:
+            print("ERROR! Missing data in file %s" % (argsdict['file']))
 
     if argsdict['create_user']:
         if (argsdict['user'] != None) and (argsdict['password'] != None):
@@ -883,6 +889,7 @@ def main(args):
 
     if len(sys.argv) < 2:
         parser.print_usage()
+        print("Use -h or --help for more information.")
         parser.exit(1)
 
 
