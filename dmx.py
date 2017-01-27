@@ -788,6 +788,8 @@ def deep_inspect(obj):
     print("\nCOMPREFS\n")
     __comprefs(obj)
 
+    pretty_print(obj)
+
     return(obj)
 
 
