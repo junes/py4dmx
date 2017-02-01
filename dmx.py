@@ -21,7 +21,7 @@
 #  MA 02110-1301, USA.
 
 __author__ = 'Juergen Neumann'
-__copyright__ = 'Copyright 2016, Juergen Neumann'
+__copyright__ = 'Copyright 2016-2017, Juergen Neumann'
 __license__ = 'GPL'
 __version__ = '3'
 __maintainer__ = 'Juergen Neumann'
@@ -40,10 +40,9 @@ So far the script has been tested and developed for objects with simple
 cardinality, eg. one address, one telephone number, etc.
 
 There are still some issues when there is more than one address in a composite.
-Creating complex composites (like the provided json person example) is currently
-broken.
+Creating complex composites (like the provided json person example).
 
-jpn - 20170127
+jpn - 20170231
 
 """
 
