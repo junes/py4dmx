@@ -5,7 +5,7 @@
             "dm4.contacts.first_name": "Anna",
             "dm4.contacts.last_name": "Baum"
         },
-        "dm4.contacts.phone_number": [
+        "dm4.contacts.phone_number#dm4.contacts.phone_entry": [
             {
                 "value": "1 234 567890",
                 "assoc": {
@@ -15,7 +15,7 @@
                 }
             }
         ],
-        "dm4.contacts.address": [
+        "dm4.contacts.address#dm4.contacts.address_entry": [
             {
                 "childs": {
                     "dm4.contacts.street": "Parkstr. 3",
