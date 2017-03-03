@@ -27,11 +27,9 @@ __version__ = '3'
 __maintainer__ = 'Juergen Neumann'
 __email__ = 'juergen@junes.eu'
 __status__ = 'Development'
-
-## brief description
-"""
-The aim of the script is to provide a set of python functions to play with
-DeepaMehta's REST API.
+__doc__ = """
+The aim of the script is to provide a set of python functions to play
+with DeepaMehta's REST API.
 
 When creating new topics, the script checks for exisiting topics with the same
 name and will try to reuse them in composits, if possible (=aggregations).
@@ -46,7 +44,7 @@ jpn - 20170231
 
 """
 
-import sys, json, urllib, urllib2, base64
+import os, sys, json, urllib, urllib2, base64
 import ConfigParser
 import hashlib
 import argparse
@@ -91,10 +89,11 @@ def read_config_file():
             'workspace': 'DeepaMehta'
         }
     )
-    config.read('dmx.cfg')
-    server = config.get('Connection', 'server')
-    port = config.get('Connection', 'port')
-    workspace = config.get('Connection', 'workspace')
+    if os.path.isfile('dmx.cfg'):
+        config.read('dmx.cfg')
+        server = config.get('Connection', 'server')
+        port = config.get('Connection', 'port')
+        workspace = config.get('Connection', 'workspace')
 
 
 def import_payload(json_filename, default="payload.json"):
@@ -898,4 +897,4 @@ if __name__ == '__main__':
     import sys
     sys.exit(main(sys.argv))
 
-#EOF
+# END.
