@@ -44,13 +44,15 @@ jpn - 20170231
 
 """
 
-import os, sys, json, urllib, urllib2, base64
+import os, sys, json, urllib, urllib2, cookielib, base64
 import ConfigParser
 import hashlib
 import argparse
 
 
 # variables
+jsessionid = 0 # The session ID of the authenticated user
+
 ## The user we are modifying, e.g. when creating a new user
 ## This is supposed to become a command line option
 dm_user = "new_user"
@@ -154,7 +156,7 @@ def query_yes_no(question, default="no"):
 
 def get_base64():
     """
-    This function authenticates the configured user against DM
+    This function returns the authentication string for the user against DM
     """
     authname = config.get('Credentials', 'authname') # usualy the admin user
     password = config.get('Credentials', 'password') # usualy the admin password
@@ -163,26 +165,74 @@ def get_base64():
     return(base64string)
 
 
+def get_session_id():
+    """
+    Creates an initial session and returns the session id.
+    """
+    global jsessionid
+    url = 'http://%s:%s/core/topic/0' % (server, port)
+    req = urllib2.Request(url)
+    req.add_header("Authorization", "Basic %s" % get_base64())
+    req.add_header("Content-Type", "application/json")
+    cj = cookielib.CookieJar()
+    opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
+    try:
+        test_url = opener.open(req)
+    except urllib2.HTTPError, e:
+        print('Get Session ID Error: '+str(e))
+    else:
+        for c in cj:
+            if c.name == "JSESSIONID":
+                jsessionid = c.value
+        return(jsessionid)
+
+
+def read_request(url):
+    """
+    Reads the data from a given URL.
+    """
+    url = 'http://%s:%s/%s' % (server, port, url)
+    print("Read Data %s" % url)
+    req = urllib2.Request(url)
+    req.add_header("Cookie", "JSESSIONID=%s" % jsessionid)
+    req.add_header("Content-Type", "application/json")
+    try:
+        response = (json.loads(urllib2.urlopen(req).read()))
+    except urllib2.HTTPError, e:
+        print('Read Data Error: '+str(e))
+    else:
+        return(response)
+
+
+def write_request(url, payload):
+    """
+    Reads the data from a given URL.
+    """
+    url = 'http://%s:%s/%s' % (server, port, url)
+    print("Write Data %s" % url, payload)
+    req = urllib2.Request(url)
+    req.add_header("Cookie", "JSESSIONID=%s" % jsessionid)
+    req.add_header("Content-Type", "application/json")
+    try:
+        response = (json.loads(urllib2.urlopen(req,
+                    (json.dumps(payload))).read()))
+    except urllib2.HTTPError, e:
+        print('Write Data Error: '+str(e))
+    else:
+        return(response)
+
+
 def create_user(dm_user, dm_pass):
     """
     This function creates a new user on the server.
     """
-    url = 'http://%s:%s/accesscontrol/user_account' % (server, port)
-    req = urllib2.Request(url)
-    req.add_header("Authorization", "Basic %s" % get_base64())
-    req.add_header("Content-Type", "application/json")
-    # req.add_header("Cookie", "dm4_workspace_id=%s" % wsid)
+    url = 'accesscontrol/user_account'
     hash_object = hashlib.sha256(dm_pass)
     dm_pass = '-SHA256-'+hash_object.hexdigest()
     payload = {'username' : dm_user, 'password' : dm_pass}
-    try:
-        response = (json.loads(urllib2.urlopen(req,
-                    (json.dumps(payload))).read())["id"])
-    except urllib2.HTTPError, e:
-        print('Create User Error: '+str(e))
-    else:
-        print('Create User: success')
-        return(response)
+    topic_id = write_request(url, payload)["id"]
+    print("New user '%s' was created with topic_id %s." % (dm_user, topic_id))
+    return
 
 
 def change_password(dm_user, dm_old_pass, dm_new_pass):
@@ -191,52 +241,30 @@ def change_password(dm_user, dm_old_pass, dm_new_pass):
     """
     base64string = base64.encodestring("%s:%s" %
                     (dm_user, dm_old_pass)).replace("\n", "")
+
     # get id of user_account (not user_name!)
-    url = ('http://%s:%s/core/topic/by_type/dm4.accesscontrol.user_account?include_childs=false' % (server, port))
-    req = urllib2.Request(url)
-    req.add_header("Authorization", "Basic %s" % base64string)
-    req.add_header("Content-Type", "application/json")
-    try:
-        response = (json.loads(urllib2.urlopen(req).read()))[0]['id']
-    except urllib2.HTTPError, e:
-        print('Change Password - Get Data Error: '+str(e))
-    else:
-        topic_id = response
-        print("change Password - Topic ID of user: %s" % topic_id)
+    url = 'core/topic/by_type/dm4.accesscontrol.user_account?include_childs=false'
+    topic_id = read_request(url)
+    print("change Password - Topic ID of user: %s" % topic_id)
 
     # get id of private workspace
-    url = ('http://%s:%s/core/topic?field=dm4.workspaces.name&search=Private%%20Workspace' %
-            (server, port))
-    req = urllib2.Request(url)
-    req.add_header("Authorization", "Basic %s" % base64string)
-    req.add_header("Content-Type", "application/json")
-    ## read the data
-    try:
-        wsnameid = (json.loads(urllib2.urlopen(req).read()))[0]["id"]
-        print("WSNAMEID: %s" % wsnameid)
-    except urllib2.HTTPError, e:
-        print('Get WSNAMEID Error: '+str(e))
-    url = ('http://%s:%s/core/topic/%s/related_topics'
+    url = 'core/topic?field=dm4.workspaces.name&search=Private%%20Workspace'
+    wsnameid = read_request(url)[0]["id"]
+    print("WSNAMEID: %s" % wsnameid)
+
+
+    url = ('core/topic/%s/related_topics'
            '?assoc_type_uri=dm4.core.composition&my_role_type_uri='
            'dm4.core.child&others_role_type_uri=dm4.core.parent&'
-           'others_topic_type_uri=dm4.workspaces.workspace' %
-           (server, port, str(wsnameid)))
-    # print("Search URL: %s" % url)
-    req = urllib2.Request(url)
-    req.add_header("Authorization", "Basic %s" % base64string)
-    req.add_header("Content-Type", "application/json")
-    try:
-        response = (json.loads(urllib2.urlopen(req).read()))[0]["id"]
-    except urllib2.HTTPError, e:
-        print('Get WSID Error: '+str(e))
-    else:
-        wsid = response
-        print("Change Password WS ID = %s" % response)
+           'others_topic_type_uri=dm4.workspaces.workspace' % str(wsnameid)
+          )
+    wsid = read_request(url)
+    print("Change Password WS ID = %s" % response)
 
     # change password
     url = 'http://%s:%s/core/topic/%s' % (server, port, topic_id)
     req = urllib2.Request(url)
-    req.add_header("Authorization", "Basic %s" % base64string)
+    req.add_header("Cookie", "JSESSIONID=%s" % jsessionid)
     req.add_header("Content-Type", "application/json")
     req.get_method = lambda: 'PUT'
     # encrypt the new password
@@ -262,32 +290,16 @@ def get_ws_id(workspace):
     It's much faster to get it by its uri, if present.
     """
     print("Searching Workspace ID for %s" % workspace)
-    url = ('http://%s:%s/core/topic?field=dm4.workspaces.name&search=%s' %
-            (server, port, workspace))
-    req = urllib2.Request(url)
-    req.add_header("Authorization", "Basic %s" % get_base64())
-    req.add_header("Content-Type", "application/json")
-    ## read the data
-    try:
-        wsnameid = (json.loads(urllib2.urlopen(req).read()))[0]["id"]
-    except urllib2.HTTPError, e:
-        print('Get WSNAMEID Error: '+str(e))
-    url = ('http://%s:%s/core/topic/%s/related_topics'
+    url = ('core/topic?field=dm4.workspaces.name&search=%s' % sworkspace)
+    wsnameid = read_request(url)[0]["id"]
+    url = ('/core/topic/%s/related_topics'
            '?assoc_type_uri=dm4.core.composition&my_role_type_uri='
            'dm4.core.child&others_role_type_uri=dm4.core.parent&'
            'others_topic_type_uri=dm4.workspaces.workspace' %
-           (server, port, str(wsnameid)))
-    # print("Search URL: %s" % url)
-    req = urllib2.Request(url)
-    req.add_header("Authorization", "Basic %s" % get_base64())
-    req.add_header("Content-Type", "application/json")
-    try:
-        response = (json.loads(urllib2.urlopen(req).read()))[0]["id"]
-    except urllib2.HTTPError, e:
-        print('Get WSID Error: '+str(e))
-    else:
-        print("WS ID = %s" % response)
-        return(response)
+           str(wsnameid))
+    ws_id = read_request(url)[0]["id"]
+    print("WS ID = %s" % ws_id)
+    return(ws_id)
 
 
 def create_ws(workspace, ws_type):
@@ -299,7 +311,7 @@ def create_ws(workspace, ws_type):
     url = ('http://%s:%s/workspace/%s/%s/dm4.workspaces.%s' %
             (server, port, workspace, uri, ws_type))
     req = urllib2.Request(url)
-    req.add_header("Authorization", "Basic %s" % get_base64())
+    req.add_header("Cookie", "JSESSIONID=%s" % jsessionid)
     req.add_header("Content-Type", "application/json")
     try:
         #response = (json.loads(urllib2.urlopen(req, data='')))
@@ -321,7 +333,7 @@ def create_member(workspace, dm_user):
     url = ('http://%s:%s/accesscontrol/user/%s/workspace/%s' %
             (server, port, dm_user, wsid))
     req = urllib2.Request(url)
-    req.add_header("Authorization", "Basic %s" % get_base64())
+    req.add_header("Cookie", "JSESSIONID=%s" % jsessionid)
     req.add_header("Content-Type", "application/json")
     try:
         urllib2.urlopen(req, data='')
@@ -337,18 +349,9 @@ def send_data(payload):
     the workspace id on the server.
     """
     wsid = get_ws_id(workspace)
-    url = 'http://%s:%s/core/topic/' % (server, port)
-    req = urllib2.Request(url)
-    req.add_header("Authorization", "Basic %s" % get_base64())
-    req.add_header("Content-Type", "application/json")
-    req.add_header("Cookie", "dm4_workspace_id=%s" % wsid)
-    try:
-        response = (json.loads(urllib2.urlopen(req,
-                    (json.dumps(payload))).read()))["id"]
-    except urllib2.HTTPError, e:
-        print('Send Data Error: '+str(e))
-    else:
-        return(response)
+    url = '/core/topic/'
+    topic_id = write_request(url, payload)["id"]
+    return(topic_id)
 
 
 def get_topic(topic_id):
@@ -356,18 +359,8 @@ def get_topic(topic_id):
     This function fetches the data according to datapath from
     the server and returns the data.
     """
-    url = ('http://%s:%s/core/topic/%s?include_childs=false' %
-            (server, port, topic_id))
-    print("Get Data %s" % url)
-    req = urllib2.Request(url)
-    req.add_header("Authorization", "Basic %s" % get_base64())
-    req.add_header("Content-Type", "application/json")
-    try:
-        response = (json.loads(urllib2.urlopen(req).read()))
-    except urllib2.HTTPError, e:
-        print('Get Data Error: '+str(e))
-    else:
-        return(response)
+    url = ('core/topic/%s?include_childs=false' % topic_id)
+    return(read_request(url))
 
 
 def get_data(datapath):
@@ -375,18 +368,8 @@ def get_data(datapath):
     This function fetches the data according to datapath from
     the server and returns the data.
     """
-    url = ('http://%s:%s/core/%s?include_childs=true' %
-            (server, port, datapath))
-    print("Get Data %s" % url)
-    req = urllib2.Request(url)
-    req.add_header("Authorization", "Basic %s" % get_base64())
-    req.add_header("Content-Type", "application/json")
-    try:
-        response = (json.loads(urllib2.urlopen(req).read()))
-    except urllib2.HTTPError, e:
-        print('Get Data Error: '+str(e))
-    else:
-        return(response)
+    url = ('core/%s?include_childs=true' % datapath)
+    return(read_request(url))
 
 
 def get_items(topictype):
@@ -415,17 +398,8 @@ def get_related(topic_id):
     This function fetches related topics according to topic_id from
     the server and returns the data.
     """
-    url = ('http://%s:%s/core/topic/%s/related_topics?' %
-            (server, port, topic_id))
-    req = urllib2.Request(url)
-    req.add_header("Authorization", "Basic %s" % get_base64())
-    req.add_header("Content-Type", "application/json")
-    try:
-        response = (json.loads(urllib2.urlopen(req).read()))
-    except urllib2.HTTPError, e:
-        print('Get Related Error: '+str(topic_id)+' => '+str(e))
-    else:
-        return(response)
+    url = ('core/topic/%s/related_topics?' % topic_id)
+    return(read_request(url))
 
 
 def get_creator(topic_id):
@@ -433,17 +407,8 @@ def get_creator(topic_id):
     This function fetches related topics according to topic_id from
     the server and returns the data.
     """
-    url = ('http://%s:%s/accesscontrol/object/%s/creator' %
-            (server, port, topic_id))
-    req = urllib2.Request(url)
-    req.add_header("Authorization", "Basic %s" % get_base64())
-    req.add_header("Content-Type", "application/json")
-    try:
-        response = str(urllib2.urlopen(req).read())
-    except urllib2.HTTPError, e:
-        print('Get Creator Error: '+str(e))
-    else:
-        return(response)
+    url = ('accesscontrol/object/%s/creator' % topic_id)
+    return(read_request(url))
 
 
 def get_modifier(topic_id):
@@ -451,17 +416,8 @@ def get_modifier(topic_id):
     This function fetches related topics according to topic_id from
     the server and returns the data.
     """
-    url = ('http://%s:%s/accesscontrol/object/%s/modifier' %
-            (server, port, topic_id))
-    req = urllib2.Request(url)
-    req.add_header("Authorization", "Basic %s" % get_base64())
-    req.add_header("Content-Type", "application/json")
-    try:
-        response = str(urllib2.urlopen(req).read())
-    except urllib2.HTTPError, e:
-        print('Get Modifier Error: '+str(e))
-    else:
-        return(response)
+    url = ('accesscontrol/object/%s/modifier' % topic_id)
+    return(read_request(url))
 
 
 def get_topic_ws(topic_id):
@@ -469,17 +425,8 @@ def get_topic_ws(topic_id):
     This function fetches the topic's workspace id according to topic_id from
     the server and returns the data.
     """
-    url = ('http://%s:%s/workspace/object/%s' %
-            (server, port, topic_id))
-    req = urllib2.Request(url)
-    req.add_header("Authorization", "Basic %s" % get_base64())
-    req.add_header("Content-Type", "application/json")
-    try:
-        response = (json.loads(urllib2.urlopen(req).read()))["id"]
-    except urllib2.HTTPError, e:
-        print('Get Topic WS Error: '+str(e))
-    else:
-        return(response)
+    url = ('workspace/object/%s' % topic_id)
+    return(read_request(url))
 
 
 def get_ws_owner(workspace_id):
@@ -487,17 +434,8 @@ def get_ws_owner(workspace_id):
     This function fetches the owner of a workspace id from
     the server and returns the data.
     """
-    url = ('http://%s:%s/accesscontrol/workspace/%s/owner' %
-            (server, port, workspace_id))
-    req = urllib2.Request(url)
-    req.add_header("Authorization", "Basic %s" % get_base64())
-    req.add_header("Content-Type", "application/json")
-    try:
-        response = str(urllib2.urlopen(req).read())
-    except urllib2.HTTPError, e:
-        print('Get WS Owner Error: '+str(e))
-    else:
-        return(response)
+    url = ('accesscontrol/workspace/%s/owner' % workspace_id)
+    return(read_request(url))
 
 
 def delete_topic(topic_id):
@@ -507,7 +445,7 @@ def delete_topic(topic_id):
     url = ('http://%s:%s/core/topic/%s' %
             (server, port, topic_id))
     req = urllib2.Request(url)
-    req.add_header("Authorization", "Basic %s" % get_base64())
+    req.add_header("Cookie", "JSESSIONID=%s" % jsessionid)
     req.add_header("Content-Type", "application/json")
     req.get_method = lambda: 'DELETE'
     try:
@@ -805,6 +743,7 @@ def pretty_print(data):
 def main(args):
 
     read_config_file()
+    get_session_id()
 
     """
     ToDo:
