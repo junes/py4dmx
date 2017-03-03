@@ -94,7 +94,9 @@ def read_config_file():
         server = config.get('Connection', 'server')
         port = config.get('Connection', 'port')
         workspace = config.get('Connection', 'workspace')
-
+    else:
+        print("ERROR! Config file 'dmx.cfg' not found.")
+        sys.exit(1)
 
 def import_payload(json_filename, default="payload.json"):
     """
