@@ -200,18 +200,27 @@ def read_request(url):
         response = (json.loads(urllib2.urlopen(req).read()))
     except urllib2.HTTPError, e:
         print('Read Data Error: '+str(e))
+    except ValueError:
+        print('WARNING! No JSON Object found.')
+        try:
+            response = urllib2.urlopen(req).read()
+        except urllib2.HTTPError, e:
+            print('Read Data Error: '+str(e))
+        else:
+            return(response)
     else:
         return(response)
 
 
-def write_request(url, payload):
+def write_request(url, payload, workspace='DeepaMehta'):
     """
     Reads the data from a given URL.
     """
     url = 'http://%s:%s/%s' % (server, port, url)
     print("Write Data %s" % url, payload)
+    wsid = get_ws_id(workspace)
     req = urllib2.Request(url)
-    req.add_header("Cookie", "JSESSIONID=%s" % jsessionid)
+    req.add_header("Cookie", "JSESSIONID=%s; dm4_workspace_id=%s" % (jsessionid, wsid))
     req.add_header("Content-Type", "application/json")
     try:
         response = (json.loads(urllib2.urlopen(req,
@@ -226,13 +235,21 @@ def create_user(dm_user, dm_pass):
     """
     This function creates a new user on the server.
     """
-    url = 'accesscontrol/user_account'
-    hash_object = hashlib.sha256(dm_pass)
-    dm_pass = '-SHA256-'+hash_object.hexdigest()
-    payload = {'username' : dm_user, 'password' : dm_pass}
-    topic_id = write_request(url, payload)["id"]
-    print("New user '%s' was created with topic_id %s." % (dm_user, topic_id))
-    return
+    # check if username exits
+    users = get_items('dm4.accesscontrol.username').values()
+    print(users)
+    if dm_user in users:
+        print("ERROR! User '%s' exists." % dm_user)
+        sys.exit(1)
+    else:
+        # create user
+        url = 'accesscontrol/user_account'
+        hash_object = hashlib.sha256(dm_pass)
+        dm_pass = '-SHA256-'+hash_object.hexdigest()
+        payload = {'username' : dm_user, 'password' : dm_pass}
+        topic_id = write_request(url, payload)["id"]
+        print("New user '%s' was created with topic_id %s." % (dm_user, topic_id))
+        return
 
 
 def change_password(dm_user, dm_old_pass, dm_new_pass):
@@ -290,9 +307,9 @@ def get_ws_id(workspace):
     It's much faster to get it by its uri, if present.
     """
     print("Searching Workspace ID for %s" % workspace)
-    url = ('core/topic?field=dm4.workspaces.name&search=%s' % sworkspace)
+    url = ('core/topic?field=dm4.workspaces.name&search=%s' % workspace)
     wsnameid = read_request(url)[0]["id"]
-    url = ('/core/topic/%s/related_topics'
+    url = ('core/topic/%s/related_topics'
            '?assoc_type_uri=dm4.core.composition&my_role_type_uri='
            'dm4.core.child&others_role_type_uri=dm4.core.parent&'
            'others_topic_type_uri=dm4.workspaces.workspace' %
@@ -343,14 +360,13 @@ def create_member(workspace, dm_user):
         print('Create Member: success')
 
 
-def send_data(payload):
+def send_data(payload, workspace='DeepaMehta'):
     """
     This function sends the topics according to payload to
-    the workspace id on the server.
+    the workspace name on the server.
     """
-    wsid = get_ws_id(workspace)
-    url = '/core/topic/'
-    topic_id = write_request(url, payload)["id"]
+    url = 'core/topic/'
+    topic_id = write_request(url, payload, workspace)["id"]
     return(topic_id)
 
 
