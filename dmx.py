@@ -49,10 +49,6 @@ import ConfigParser
 import hashlib
 import argparse
 
-
-# variables
-jsessionid = 0 # The session ID of the authenticated user
-
 ## The user we are modifying, e.g. when creating a new user
 ## This is supposed to become a command line option
 dm_user = "new_user"
@@ -61,7 +57,6 @@ dm_pass = "you_should_use_a_better_password_here!"
 ## for simple topics
 next_key = ""
 next_value = ""
-
 
 def read_config_file():
     """
@@ -77,10 +72,10 @@ def read_config_file():
     workspace = DeepaMehta
     """
     global config
-    global server
-    global port
-    global workspace
 
+    script_dir = os.path.dirname(__file__) #<-- absolute dir the script is in
+    config_file_name = 'dmx.cfg'
+    config_file=os.path.join(script_dir, config_file_name)
     ## if empty or missing, use these parameters
     config = ConfigParser.SafeConfigParser(
         {
@@ -91,14 +86,47 @@ def read_config_file():
             'workspace': 'DeepaMehta'
         }
     )
-    if os.path.isfile('dmx.cfg'):
-        config.read('dmx.cfg')
+    if os.path.isfile(config_file):
+        config.read(config_file)
         server = config.get('Connection', 'server')
         port = config.get('Connection', 'port')
         workspace = config.get('Connection', 'workspace')
     else:
-        print("ERROR! Config file 'dmx.cfg' not found.")
+        print("ERROR! Config file %s not found." % config_file)
         sys.exit(1)
+
+
+def read_dmx_config(instance):
+    """
+    Reads the configuration data from /etc/deepamehta/$INSTANCE.conf
+    and overwrites the config settings with new values.
+    """
+    global config
+    dmx_params={}
+    dmx_config_file=str('/etc/deepamehta/' + instance + '.conf')
+    # print(dmx_config_file)
+    if os.access(dmx_config_file, os.R_OK):
+        with open(dmx_config_file) as f_in:
+	    lines = filter(None, (line.rstrip() for line in f_in))
+	for ln in lines:
+	    # print(ln)
+            if not ln[0] in ('', ' ', '#', ';'):
+                key, val = ln.strip().replace(" ", "").split('=', 1)
+                dmx_params[key.lower()] = val
+	# print(dmx_params['org.osgi.service.http.port'])
+	# print(dmx_params['dm4.security.initial_admin_password'])
+	## , dmx_params['dm4.security.initial_admin_password'])
+    port=dmx_params['org.osgi.service.http.port']
+    password=dmx_params['dm4.security.initial_admin_password']
+    config.set('Credentials', 'password', password) # usualy the admin password
+    config.set('Connection', 'port', port) # usualy the admin user
+
+    for mandatory in ['org.osgi.service.http.port', 'dm4.security.initial_admin_password']:
+        if mandatory not in dmx_params.keys():
+            # open(os.environ['HOME']+'/.xmppacct','w').write('#Uncomment fields before use and type in correct credentials.\n#JID=romeo@montague.net/resource (/resource is optional)\n#PASSWORD=juliet\n')
+            print("ERROR! Could not read config file %s." % dmx_config_file)
+            sys.exit(0)
+
 
 def import_payload(json_filename, default="payload.json"):
     """
@@ -169,7 +197,8 @@ def get_session_id():
     """
     Creates an initial session and returns the session id.
     """
-    global jsessionid
+    server = config.get('Connection', 'server')
+    port = config.get('Connection', 'port')
     url = 'http://%s:%s/core/topic/0' % (server, port)
     req = urllib2.Request(url)
     req.add_header("Authorization", "Basic %s" % get_base64())
@@ -191,7 +220,10 @@ def read_request(url):
     """
     Reads the data from a given URL.
     """
+    server = config.get('Connection', 'server')
+    port = config.get('Connection', 'port')
     url = 'http://%s:%s/%s' % (server, port, url)
+    jsessionid = get_session_id()
     print("Read Data %s" % url)
     req = urllib2.Request(url)
     req.add_header("Cookie", "JSESSIONID=%s" % jsessionid)
@@ -216,7 +248,10 @@ def write_request(url, payload, workspace='DeepaMehta'):
     """
     Reads the data from a given URL.
     """
+    server = config.get('Connection', 'server')
+    port = config.get('Connection', 'port')
     url = 'http://%s:%s/%s' % (server, port, url)
+    jsessionid = get_session_id()
     print("Write Data %s" % url, payload)
     wsid = get_ws_id(workspace)
     req = urllib2.Request(url)
@@ -279,6 +314,9 @@ def change_password(dm_user, dm_old_pass, dm_new_pass):
     print("Change Password WS ID = %s" % response)
 
     # change password
+    server = config.get('Connection', 'server')
+    port = config.get('Connection', 'port')
+    jsessionid = get_session_id()
     url = 'http://%s:%s/core/topic/%s' % (server, port, topic_id)
     req = urllib2.Request(url)
     req.add_header("Cookie", "JSESSIONID=%s" % jsessionid)
@@ -324,6 +362,9 @@ def create_ws(workspace, ws_type):
     This function creates a workspace with workspace uri
     (needed for id) on the server.
     """
+    server = config.get('Connection', 'server')
+    port = config.get('Connection', 'port')
+    jsessionid = get_session_id()
     uri = workspace.lower()+'.uri'
     url = ('http://%s:%s/workspace/%s/%s/dm4.workspaces.%s' %
             (server, port, workspace, uri, ws_type))
@@ -346,6 +387,9 @@ def create_member(workspace, dm_user):
     the workspace on the server.
     """
     print("Creating Workspace membership for user %s in %s" % (dm_user, workspace))
+    server = config.get('Connection', 'server')
+    port = config.get('Connection', 'port')
+    jsessionid = get_session_id()
     wsid = get_ws_id(workspace)
     url = ('http://%s:%s/accesscontrol/user/%s/workspace/%s' %
             (server, port, dm_user, wsid))
@@ -458,6 +502,9 @@ def delete_topic(topic_id):
     """
     This function deletes a topic by its id from the server.
     """
+    server = config.get('Connection', 'server')
+    port = config.get('Connection', 'port')
+    jsessionid = get_session_id()
     url = ('http://%s:%s/core/topic/%s' %
             (server, port, topic_id))
     req = urllib2.Request(url)
@@ -751,20 +798,19 @@ def pretty_print(data):
     """
     This function just prints the json data in a pretty way. :)
     """
-    print("Data: %s" % type(data))
+    # print("Data: %s" % type(data))
     print(json.dumps(data, indent=3, sort_keys=True))
     return
 
 
 def main(args):
-
-    read_config_file()
-    get_session_id()
-
     """
     ToDo:
     # change_password(user, password, 'new_pass')
     """
+
+    read_config_file()
+    # get_session_id()
 
     parser = argparse.ArgumentParser(description = 'This is a Python script \
              for DeepaMehta by Juergen Neumann <juergen@junes.eu>. It is free \
@@ -774,9 +820,11 @@ def main(args):
     parser.add_argument('-c','--create_user', help='Create a user with -u username and -p password.', action='store_true', required=False, default=None)
     parser.add_argument('-d','--delete_topic', type=int, help='Detele a topic by id.', required=False)
     parser.add_argument('-f','--file', type=str,help='Creates a new topic from json file.', required=False)
+    parser.add_argument('-i','--instance', type=str,help='Reads config data from /etc/deepamehta/$INSTANCE.conf.', required=False)
     parser.add_argument('-m','--member', help='Create a new workspace membership with -w workspace and -u username.', action='store_true', required=False, default=None)
     parser.add_argument('-p','--password', type=str, help='Provide a password.', required=False)
     parser.add_argument('-r','--get_related', type=int, help='Get all related items of a topic id.', required=False)
+    parser.add_argument('-s','--get_session_id', help='Get a valid session id.', action='store_true', required=False, default=None)
     parser.add_argument('-t','--get_topic', type=int, help='Get all data of a topic id.', required=False)
     parser.add_argument('-u','--user', type=str, help='Provide a username.', required=False)
     parser.add_argument('-w','--workspace', type=str, help='Create a new workspace by name with -T type.', required=False)
@@ -785,6 +833,10 @@ def main(args):
     argsdict = vars(args)
 
     ## action on arguments ##
+
+    # instance must be first, cause it overwrites the default setting from config
+    if argsdict['instance']:
+        data = read_dmx_config(argsdict['instance'])
 
     if argsdict['file']:
         print("Importing json data from file %s" % (argsdict['file']))
@@ -818,6 +870,10 @@ def main(args):
     if argsdict['get_topic']:
         data = get_topic(argsdict['get_topic'])
         pretty_print(data)
+
+    if argsdict['get_session_id']:
+        data = get_session_id()
+        print(data)
 
     if argsdict['workspace'] and (argsdict['ws_type'] != None) and not argsdict['member']:
         # Does not work with 'private' for now!
