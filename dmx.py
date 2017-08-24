@@ -107,15 +107,15 @@ def read_dmx_config(instance):
     # print(dmx_config_file)
     if os.access(dmx_config_file, os.R_OK):
         with open(dmx_config_file) as f_in:
-	    lines = filter(None, (line.rstrip() for line in f_in))
-	for ln in lines:
-	    # print(ln)
+        lines = filter(None, (line.rstrip() for line in f_in))
+    for ln in lines:
+        # print(ln)
             if not ln[0] in ('', ' ', '#', ';'):
                 key, val = ln.strip().replace(" ", "").split('=', 1)
                 dmx_params[key.lower()] = val
-	# print(dmx_params['org.osgi.service.http.port'])
-	# print(dmx_params['dm4.security.initial_admin_password'])
-	## , dmx_params['dm4.security.initial_admin_password'])
+    # print(dmx_params['org.osgi.service.http.port'])
+    # print(dmx_params['dm4.security.initial_admin_password'])
+    ## , dmx_params['dm4.security.initial_admin_password'])
     port=dmx_params['org.osgi.service.http.port']
     password=dmx_params['dm4.security.initial_admin_password']
     config.set('Credentials', 'password', password) # usualy the admin password
@@ -808,7 +808,7 @@ def main(args):
     ToDo:
     # change_password(user, password, 'new_pass')
     """
-
+    global config
     read_config_file()
     # get_session_id()
 
@@ -821,6 +821,7 @@ def main(args):
     parser.add_argument('-d','--delete_topic', type=int, help='Detele a topic by id.', required=False)
     parser.add_argument('-f','--file', type=str,help='Creates a new topic from json file.', required=False)
     parser.add_argument('-i','--instance', type=str,help='Reads config data from /etc/deepamehta/$INSTANCE.conf.', required=False)
+    parser.add_argument('-l','--login', help='Login as -u user with password -p instead of admin.', action='stroe_true', required=False, default=None)
     parser.add_argument('-m','--member', help='Create a new workspace membership with -w workspace and -u username.', action='store_true', required=False, default=None)
     parser.add_argument('-p','--password', type=str, help='Provide a password.', required=False)
     parser.add_argument('-r','--get_related', type=int, help='Get all related items of a topic id.', required=False)
@@ -884,6 +885,13 @@ def main(args):
             print("Sorry! %s is not working yet via scripting." % argsdict['ws_type'])
         else:
             print("ERROR! %s is not a valid workshop type." % argsdict['ws_type'])
+
+    if argsdict['login']:
+        if (argsdict['user'] != None) and (argsdict['password'] != None):
+            config.set('Credentials', 'authname', user) # usualy the admin password
+            config.set('Credentials', 'password', password) # usualy the admin password
+        else:
+            print("ERROR! Missing username or password.")
 
     if argsdict['member']:
         if (argsdict['workspace'] != None) and (argsdict['user'] != None):
