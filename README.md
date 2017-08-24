@@ -12,4 +12,9 @@ cardinality, eg. one address, one telephone number, etc.
 There are still some issues when there is more than one address in a complex
 composites (like the provided json person example).
 
+My personal whishlist:
+
+ * login and act as user xyz.
+
+
 Copyright (c) 2016-2017, Juergen Neumann, GNU General Public License Version 3
