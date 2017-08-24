@@ -12,9 +12,24 @@ cardinality, eg. one address, one telephone number, etc.
 There are still some issues when there is more than one address in a complex
 composites (like the provided json person example).
 
-My personal whishlist:
+Some examples:
 
- * login and act as user xyz.
+ * dmx.py -s
+   reads server setting and credentials from config file dmx.cfg to login and to return
+   the current session id.
 
+ * dmx.py -s -u "myusername" -p "mypassword"
+   will login user "myusername" into deepamehta and output the current session id.
+
+ * dmx.py -i "deepamehta" -s
+   looks into the config file /etc/deepamehta/deepamehta.conf to read server settings and 
+   admin password from there to login to server and output the current session id.
+
+ * dmx.py -l -u "myusername" -p "mypassword" -m -w "my shared workspace" -n "pied.piper"
+   adds the user with username "pied.piper" to my workspace named "my shared workspace"
+
+ * dmx.py -i "deepamehta" -s
+   looks into the config file /etc/deepamehta/deepamehta.conf to read server settings and 
+   admin password from there to login to server and output the current session id.
 
 Copyright (c) 2016-2017, Juergen Neumann, GNU General Public License Version 3

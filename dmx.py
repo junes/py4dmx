@@ -345,7 +345,8 @@ def get_ws_id(workspace):
     It's much faster to get it by its uri, if present.
     """
     print("Searching Workspace ID for %s" % workspace)
-    url = ('core/topic?field=dm4.workspaces.name&search=%s' % workspace)
+    # url = ('core/topic?field=dm4.workspaces.name&search="%s"' % urllib.quote(workspace, safe=''))
+    url = ('core/topic?field=dm4.workspaces.name&search="%s"' % workspace.replace(' ', '%20'))
     wsnameid = read_request(url)[0]["id"]
     url = ('core/topic/%s/related_topics'
            '?assoc_type_uri=dm4.core.composition&my_role_type_uri='
@@ -822,7 +823,8 @@ def main(args):
     parser.add_argument('-f','--file', type=str,help='Creates a new topic from json file.', required=False)
     parser.add_argument('-i','--instance', type=str,help='Reads config data from /etc/deepamehta/$INSTANCE.conf.', required=False)
     parser.add_argument('-l','--login', help='Login as -u user with password -p instead of admin.', action='store_true', required=False, default=None)
-    parser.add_argument('-m','--member', help='Create a new workspace membership with -w workspace and -u username.', action='store_true', required=False, default=None)
+    parser.add_argument('-m','--membership', help='Create a new workspace membership with -w workspace name and -n username of new member.', action='store_true', required=False, default=None)
+    parser.add_argument('-n','--new_member', type=str, help='Provide the username of new member.', required=False)
     parser.add_argument('-p','--password', type=str, help='Provide a password.', required=False)
     parser.add_argument('-r','--get_related', type=int, help='Get all related items of a topic id.', required=False)
     parser.add_argument('-s','--get_session_id', help='Get a valid session id.', action='store_true', required=False, default=None)
@@ -893,11 +895,11 @@ def main(args):
         data = get_session_id()
         print(data)
 
-    if argsdict['member']:
-        if (argsdict['workspace'] != None) and (argsdict['user'] != None):
-            data = create_member(argsdict['workspace'], argsdict['user'])
+    if argsdict['membership']:
+        if (argsdict['workspace'] != None) and (argsdict['new_member'] != None):
+            data = create_member(argsdict['workspace'], argsdict['new_member'])
         else:
-            print("ERROR! Missing username or workspace name.")
+            print("ERROR! Missing username of new member or missing workspace name.")
 
     if argsdict['delete_topic']:
         data = get_topic(argsdict['delete_topic'])
