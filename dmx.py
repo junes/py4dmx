@@ -111,8 +111,12 @@ def read_dmx_config(instance):
     for ln in lines:
         # print(ln)
         if not ln[0] in ('', ' ', '#', ';'):
-            key, val = ln.strip().replace(" ", "").split('=', 1)
-            dmx_params[key.lower()] = val
+            try:
+                key, val = ln.strip().replace(" ", "").split('=', 1)
+            except ValueError:
+                print("INFO: No value found for %s in %s" % (key, dmx_config_file))
+            else:    
+                dmx_params[key.lower()] = val
     # print(dmx_params['org.osgi.service.http.port'])
     # print(dmx_params['dm4.security.initial_admin_password'])
     ## , dmx_params['dm4.security.initial_admin_password'])
