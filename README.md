@@ -18,7 +18,7 @@ Some examples:
    reads server setting and credentials from config file dmx.cfg to login and to return
    the current session id.
 
- * dmx.py -s -u "myusername" -p "mypassword"
+ * dmx.py -s -l -u "myusername" -p "mypassword"
    will login user "myusername" into deepamehta and output the current session id.
 
  * dmx.py -i "deepamehta" -s
