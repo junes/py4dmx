@@ -418,7 +418,7 @@ def get_topic(topic_id):
     This function fetches the data according to datapath from
     the server and returns the data.
     """
-    url = ('core/topic/%s?include_childs=false' % topic_id)
+    url = ('core/topic/%s?include_childs=true' % topic_id)
     return(read_request(url))
 
 
