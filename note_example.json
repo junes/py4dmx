@@ -1,7 +1,7 @@
 {
-   "type_uri": "dm4.notes.note",
+   "type_uri": "dmx.notes.note",
    "childs": {
-      "dm4.notes.title": "My Other Note",
-      "dm4.notes.text": "<p>More useless HTML content here<p>"
+      "dmx.notes.title": "My Other Note",
+      "dmx.notes.text": "<p>More useless HTML content here<p>"
    }
 }

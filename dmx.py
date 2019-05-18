@@ -3,7 +3,7 @@
 #
 #  dmx.py - _dev.py
 #
-#  Copyright 2016 Juergen Neumann <juergen@junes.eu>
+#  Copyright 2019 DMX Systems <https://dmx.systems>
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -20,16 +20,16 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 
-__author__ = 'Juergen Neumann'
-__copyright__ = 'Copyright 2016-2017, Juergen Neumann'
+__author__ = 'Juergen Neumann <juergen@dmx.systems>'
+__copyright__ = 'Copyright 2019, DMX Systems <https://dmx.systems>'
 __license__ = 'GPL'
 __version__ = '3'
 __maintainer__ = 'Juergen Neumann'
-__email__ = 'juergen@junes.eu'
+__email__ = 'juergen@dmx.systems'
 __status__ = 'Development'
 __doc__ = """
 The aim of the script is to provide a set of python functions to play
-with DeepaMehta's REST API.
+with DMX's REST API.
 
 When creating new topics, the script checks for exisiting topics with the same
 name and will try to reuse them in composits, if possible (=aggregations).
@@ -48,6 +48,9 @@ import os, sys, json, urllib, urllib2, cookielib, base64
 import ConfigParser
 import hashlib
 import argparse
+
+## define global variables
+config = []        # The data required to access and login to dmx
 
 ## The user we are modifying, e.g. when creating a new user
 ## This is supposed to become a command line option
@@ -69,7 +72,7 @@ def read_config_file():
     [Connection]
     server = localhost
     port = 8080
-    workspace = DeepaMehta
+    workspace = DMX
     """
     global config
 
@@ -77,33 +80,28 @@ def read_config_file():
     config_file_name = 'dmx.cfg'
     config_file=os.path.join(script_dir, config_file_name)
     ## if empty or missing, use these parameters
-    config = ConfigParser.SafeConfigParser(
-        {
-            'authname': 'admin',
-            'password': '',
-            'server': 'localhost',
-            'port': '8080',
-            'workspace': 'DeepaMehta'
-        }
-    )
+    config = ConfigParser.SafeConfigParser()
+    # config.read(DEFAULT_CONFIG)
     if os.path.isfile(config_file):
         config.read(config_file)
-        server = config.get('Connection', 'server')
-        port = config.get('Connection', 'port')
-        workspace = config.get('Connection', 'workspace')
+        # server = config.get('Connection', 'server')
+        # port = config.get('Connection', 'port')
+        # workspace = config.get('Connection', 'workspace')
     else:
         print("ERROR! Config file %s not found." % config_file)
         sys.exit(1)
 
 
-def read_dmx_config(instance):
+def read_dmx_config(config_properties):
     """
-    Reads the configuration data from /etc/deepamehta/$INSTANCE.conf
+    Reads the configuration data from '/path/to/dmx/config.properties'
     and overwrites the config settings with new values.
     """
     global config
+    config = ConfigParser.SafeConfigParser()
+    # config.read(DEFAULT_CONFIG)
     dmx_params={}
-    dmx_config_file=str('/etc/deepamehta/' + instance + '.conf')
+    dmx_config_file=str(config_properties)
     # print(dmx_config_file)
     if os.access(dmx_config_file, os.R_OK):
         with open(dmx_config_file) as f_in:
@@ -118,14 +116,19 @@ def read_dmx_config(instance):
             else:    
                 dmx_params[key.lower()] = val
     # print(dmx_params['org.osgi.service.http.port'])
-    # print(dmx_params['dm4.security.initial_admin_password'])
-    ## , dmx_params['dm4.security.initial_admin_password'])
+    # print(dmx_params['dmx.security.initial_admin_password'])
+    ## , dmx_params['dmx.security.initial_admin_password'])
     port=dmx_params['org.osgi.service.http.port']
-    password=dmx_params['dm4.security.initial_admin_password']
+    password=dmx_params['dmx.security.initial_admin_password']
+    config.add_section('Credentials')
+    config.set('Credentials', 'authname', 'admin') # usualy the admin user
     config.set('Credentials', 'password', password) # usualy the admin password
-    config.set('Connection', 'port', port) # usualy the admin user
+    config.add_section('Connection')
+    config.set('Connection', 'server', 'localhost') # usualy localhost
+    config.set('Connection', 'port', port) # usualy 8080
+    config.set('Connection', 'workspace', 'DMX') # usualy DMX
 
-    for mandatory in ['org.osgi.service.http.port', 'dm4.security.initial_admin_password']:
+    for mandatory in ['org.osgi.service.http.port', 'dmx.security.initial_admin_password']:
         if mandatory not in dmx_params.keys():
             # open(os.environ['HOME']+'/.xmppacct','w').write('#Uncomment fields before use and type in correct credentials.\n#JID=romeo@montague.net/resource (/resource is optional)\n#PASSWORD=juliet\n')
             print("ERROR! Could not read config file %s." % dmx_config_file)
@@ -248,7 +251,7 @@ def read_request(url):
         return(response)
 
 
-def write_request(url, payload, workspace='DeepaMehta'):
+def write_request(url, payload, workspace='DMX'):
     """
     Reads the data from a given URL.
     """
@@ -275,7 +278,7 @@ def create_user(dm_user, dm_pass):
     This function creates a new user on the server.
     """
     # check if username exits
-    users = get_items('dm4.accesscontrol.username').values()
+    users = get_items('dmx.accesscontrol.username').values()
     print(users)
     if dm_user in users:
         print("ERROR! User '%s' exists." % dm_user)
@@ -299,20 +302,20 @@ def change_password(dm_user, dm_old_pass, dm_new_pass):
                     (dm_user, dm_old_pass)).replace("\n", "")
 
     # get id of user_account (not user_name!)
-    url = 'core/topic/by_type/dm4.accesscontrol.user_account?include_childs=false'
+    url = 'core/topic/by_type/dmx.accesscontrol.user_account?include_childs=false'
     topic_id = read_request(url)
     print("change Password - Topic ID of user: %s" % topic_id)
 
     # get id of private workspace
-    url = 'core/topic?field=dm4.workspaces.name&search=Private%%20Workspace'
+    url = 'core/topic?field=dmx.workspaces.workspace_name&search=Private%%20Workspace'
     wsnameid = read_request(url)[0]["id"]
     print("WSNAMEID: %s" % wsnameid)
 
 
     url = ('core/topic/%s/related_topics'
-           '?assoc_type_uri=dm4.core.composition&my_role_type_uri='
-           'dm4.core.child&others_role_type_uri=dm4.core.parent&'
-           'others_topic_type_uri=dm4.workspaces.workspace' % str(wsnameid)
+           '?assoc_type_uri=dmx.core.composition&my_role_type_uri='
+           'dmx.core.child&others_role_type_uri=dmx.core.parent&'
+           'others_topic_type_uri=dmx.workspaces.workspace' % str(wsnameid)
           )
     wsid = read_request(url)
     print("Change Password WS ID = %s" % response)
@@ -331,7 +334,7 @@ def change_password(dm_user, dm_old_pass, dm_new_pass):
     dm_new_pass = '-SHA256-'+hash_object.hexdigest()
     payload = {
         'childs': {
-            'dm4.accesscontrol.password': dm_new_pass
+            'dmx.accesscontrol.password': dm_new_pass
         }
     }
     try:
@@ -349,13 +352,13 @@ def get_ws_id(workspace):
     It's much faster to get it by its uri, if present.
     """
     print("Searching Workspace ID for %s" % workspace)
-    # url = ('core/topic?field=dm4.workspaces.name&search="%s"' % urllib.quote(workspace, safe=''))
-    url = ('core/topic?field=dm4.workspaces.name&search="%s"' % workspace.replace(' ', '%20'))
+    # url = ('core/topic?field=dmx.workspaces.workspace_name&search="%s"' % urllib.quote(workspace, safe=''))
+    url = ('core/topic?field=dmx.workspaces.workspace_name&search="%s"' % workspace.replace(' ', '%20'))
     wsnameid = read_request(url)[0]["id"]
     url = ('core/topic/%s/related_topics'
-           '?assoc_type_uri=dm4.core.composition&my_role_type_uri='
-           'dm4.core.child&others_role_type_uri=dm4.core.parent&'
-           'others_topic_type_uri=dm4.workspaces.workspace' %
+           '?assoc_type_uri=dmx.core.composition&my_role_type_uri='
+           'dmx.core.child&others_role_type_uri=dmx.core.parent&'
+           'others_topic_type_uri=dmx.workspaces.workspace' %
            str(wsnameid))
     ws_id = read_request(url)[0]["id"]
     print("WS ID = %s" % ws_id)
@@ -371,7 +374,7 @@ def create_ws(workspace, ws_type):
     port = config.get('Connection', 'port')
     jsessionid = get_session_id()
     uri = workspace.lower()+'.uri'
-    url = ('http://%s:%s/workspace/%s/%s/dm4.workspaces.%s' %
+    url = ('http://%s:%s/workspace/%s/%s/dmx.workspaces.%s' %
             (server, port, workspace, uri, ws_type))
     req = urllib2.Request(url)
     req.add_header("Cookie", "JSESSIONID=%s" % jsessionid)
@@ -409,7 +412,7 @@ def create_member(workspace, dm_user):
         print('Create Member: success')
 
 
-def send_data(payload, workspace='DeepaMehta'):
+def send_data(payload, workspace='DMX'):
     """
     This function sends the topics according to payload to
     the workspace name on the server.
@@ -524,280 +527,6 @@ def delete_topic(topic_id):
         return(response)
 
 
-def deep_inspect(obj):
-    """
-    This function is parsing a nested dictionary. Inspiration found here:
-    http://stackoverflow.com/questions/15785719/how-to-print-a-dictionary-line-by-line-in-python
-    """
-    ref_ids = {}   # dict with aggrs ref_ids for an existing topic
-    childs = {}    # dict with the childs of a topictype where all assocs are aggregations
-    aggrs = {}     # dict with only the aggregated childs of a topictype with mixed or missing associations
-    comp_refs = {} # dictionary with the ref_ids of the compositions
-    multi_comps = {} # dict with many values per one composition key
-
-    def __comprefs(obj, nested_level=0):
-        nested_level += 1
-        if type(obj) == dict and len(comp_refs) > 0:
-            for k, v in obj.items():
-                default_key = "EMPTY_KEY"
-                r = comp_refs.get(k, default_key)
-                if hasattr(v, '__iter__'):
-                    print(str(nested_level)+'.dT'+nested_level*'    '+'key: %s' % k)
-                    if r != "EMPTY_KEY":
-                        val_len = len(obj[k])
-                        if type(obj[k]) == dict and k in comp_refs.iterkeys():
-                            print("dict_len: %s" % val_len)
-                            ### hier sind wir für die einfachen copositions
-                            for l in range(val_len):
-                                obj[k] = comp_refs[k]
-                        elif type(obj[k]) == list:
-                            print("list_len: %s" % val_len)
-                            for l in range(val_len):
-                                try:
-                                    print(obj[k][l]["childs"])
-                                except:
-                                    print("ERROR: "+str(type(obj[k])))
-                                    pass
-                                else:
-                                    ### hier kommen die komplexen compositions
-                                    list_of_values = multi_comps[k]
-                                    # print(list_of_values[l])
-                                    obj[k][l]["value"] = list_of_values[l]
-                                    del obj[k][l]["childs"]
-                    __comprefs(v, nested_level)
-                else:
-                    print(str(nested_level)+'.dF'+nested_level*'    '+"key = %s, value = %s" % (k,v))
-                    if r != "EMPTY_KEY":
-                        for val in childs.itervalues():
-                            for key in val:
-                                if key == k:
-                                    del obj[k]
-        elif type(obj) == list and len(comp_refs) > 0:
-            for v in obj:
-                if hasattr(v, '__iter__'):
-                    __comprefs(v, nested_level)
-                else:
-                    print(str(nested_level)+'.lF'+nested_level*'    '+"key = %s, value = %s" % (k,v))
-        elif type(obj) != dict and type(obj) != list and len(comp_refs) > 0:
-            print(str(nested_level)+'.oF'+nested_level*'    '+"Object: %s" % obj)
-
-    def __replacer(obj, nested_level=0):
-        nested_level += 1
-        comp_string = []
-        child_key = ""
-        if type(obj) == dict:
-            for k, v in obj.items():
-                if hasattr(v, '__iter__'):
-                    print(str(nested_level)+'.dT'+nested_level*'    '+'key: %s' % k)
-                    __replacer(v, nested_level)
-                else:
-                    # First we prepare the comp_string to search for
-                    # a ref_id for the whole composite.
-                    for val in childs.itervalues():
-                        for key in val:
-                            if key == k:
-                                # print("REPLACER: comp_string.append %s" % obj[k])
-                                comp_string.append(obj[k])
-
-                    # Then we search the ref_id for each agrregated topic.
-                    # comp_count = 0 # simple counter
-                    for val in aggrs.itervalues():
-                        for key in val:
-                            if key == k:
-                                # print(k+" ist in childs!")
-                                # comp_string.append(obj[k])
-                                data = get_items(key)
-                                # print(data)
-                                for key, val in data.iteritems():
-                                    # print key, val
-                                    if obj[k] == val:
-                                        # Here we want to do some more research
-                                        # on the topic itself. Especially if
-                                        # we have more than one of it. (future)
-                                        if "dm4.core.composition" in (get_related(key)[1]["assoc"]["type_uri"]):
-                                            print("Houston, we have a problem: Topic %s has another composition association ..." % key)
-                                        else:
-                                            obj[k] = ("ref_id:%s" % key)
-                                            #################
-                                            # delete_topic(key)
-                                            #################
-
-            if len(comp_string) > 0:
-                # print("len(comp_string) = %s" % len(comp_string))
-                for child_key in childs.iterkeys():
-                    data = get_items(child_key)
-                    for key, val in data.iteritems():
-                        c_found = 0
-                        for c in comp_string:
-                            if c in val:
-                                c_found += 1
-                        if len(comp_string) == c_found:
-                            print("REPLACER: "+child_key+" "+" ".join(comp_string)+' exists. '+'ref_id: '+str(key))
-                            comp_refs[child_key] = ("ref_id:%s" % key)
-                            # wenn es davon auch mehrere gleiche gibt, wie soll
-                            # dann damit verfahren werden? => checker ???
-                            #################
-                            # delete_topic(key)
-                            #################
-                            if nested_level > 0:
-                                print("+++ EXIT!? (Level: %s) +++" % nested_level)
-
-            default_key = "EMPTY_KEY"
-            r = comp_refs.get(child_key, default_key)
-            if r != "EMPTY_KEY":
-                # print("comp_refs[child_key] = %s" % comp_refs[child_key])
-                multi_comps.setdefault(child_key, []).append(comp_refs[child_key])
-
-        elif type(obj) == list:
-            for v in obj:
-                if hasattr(v, '__iter__'):
-                    __replacer(v, nested_level)
-                else:
-                    print(str(nested_level)+'.lF'+nested_level*'    '+"key = %s, value = %s" % (k,v))
-        else:
-            print(str(nested_level)+'.oF'+nested_level*'    '+"Object: %s" % obj)
-
-    def __analyzer(k, v, nested_level):
-        global next_key
-        global next_value
-        if k != "childs" and k != "assoc" and k != "value":
-            if k == "type_uri":
-                k = v
-            data = get_data('topictype/'+k)
-            data_type = data["data_type_uri"]
-            print('\033[94m'+'type'+'\033[0m'+nested_level*'    '+data_type)
-            comp_defs = [] # This is a list
-            aggr_defs = [] # This is a list
-
-            if data_type == "dm4.core.composite":
-                for i in range(len(data["assoc_defs"])):
-                    child = data["assoc_defs"][i]["role_2"]["topic_uri"]
-                    assoc_type = data["assoc_defs"][i]["type_uri"]
-                    print('\033[94m'+'child'+'\033[0m'+nested_level*'    '+"%s => %s" % (child, assoc_type))
-                    if assoc_type == "dm4.core.composition_def":
-                        comp_defs.append(child)
-                    elif assoc_type == "dm4.core.aggregation_def":
-                        """
-                        In dieser Liste landen die per Aggregation
-                        assoziierten Topics. Nur für diese müssen und können
-                        wir nach ref_ids suchen.
-                        """
-                        aggr_defs.append(child)
-                if len(comp_defs) == 0 and len(aggr_defs) != 0:
-                    """
-                    Diese Liste enthält alle Aggregation Childs für den
-                    Composite Typen k. Die Liste brauchen wir später, um
-                    ggf. die entsprechenden ref_ids für das komplette Composite
-                    zu finden.
-                    """
-                    childs[k] = aggr_defs
-                if len(aggr_defs) > 0:
-                    """
-                    Das Composite enthält sowohl Aggregations als auch
-                    Compositions oder bei der Suche nach vorhandenen Aggregations
-                    des kompletten Composits ist ein Wert noch nicht vorhanden.
-                    Wir merken uns dehalb die Aggregations, um später
-                    ggf. den Value gegen die ref_id eines vorhandenen Topics
-                    auszutaucschen.
-                    """
-                    aggrs[k] = aggr_defs
-            else:
-                print('\033[93m'+'value'+nested_level*'    '+str(v)+'\033[0m')
-                print("ANALYZER: next_key = %s" % k)
-                next_key = k
-        elif k == "value":
-            print("ANALYZER: next_value = %s" % v)
-            next_value = v
-
-    def __checker(topic_type, topic_value):
-        """
-        Ich will eine check_topic Funktion bauen. Diese soll zuerst prüfen,
-        ob es ein oder mehrere Topics mit diesem Wert gibt. Danach soll geprüft werden,
-        ob jedes dieser Topics eventuell irgendwohin eine composition assoc hat.
-        Dann soll geprüft werden, wer der creator und wer der owner des Topics ist (bin ich das?)
-        und in welchem workspace es liegt. Dann soll genrelell (globale variable) entschieden
-        werden, ob abgebrochen wird, oder ob das best geeignetse Topic als Referenz
-        verwendet werden soll.
-        """
-        print("CHECKER TopicType: %s" % topic_type)
-        found = 0
-        topics = {}
-        if topic_type != "childs" and topic_type != "assoc" and topic_type != "value" and topic_type != "type_uri":
-            data = get_items(topic_type)
-            # print("Topic_Value: %s" % topic_value)
-            if len(data) > 0:
-                for key, val in data.iteritems():
-                    # print("CHECKER: Key: %s, Val: %s" % (key, val))
-                    if val == topic_value:
-                        found += 1
-                        # print"CHECKER: %s zum %s. mal gefunden! %s" % (val, found, key)
-                        topics[found] = key
-            print"CHECKER: %s %s mal gefunden!" % (topic_value, found)
-            if found >= 1:
-                for k in topics.iterkeys():
-                    # print("CHECKER Topic ID: %s" % topics[k])
-                    creator = get_creator(topics[k])
-                    modifier = get_modifier(topics[k])
-                    workspace_id = get_topic_ws(topics[k])
-                    workspace_owner = get_ws_owner(workspace_id)
-                    print("TopicID: %s" % topics[k])
-                    print("Creator: %s" % creator)
-                    print("Modifier: %s" % modifier)
-                    print("Workspace ID: %s" % workspace_id)
-                    print("Workspace Owner: %s" % workspace_owner)
-                    # Der nachfolgende Test sollte eine eigene Funktion werden.
-                    try:
-                        if "dm4.core.composition" in (get_related(topics[k])[1]["assoc"]["type_uri"]):
-                            print("Houston, we have a problem: Topic %s has another composition association ..." % topics[k])
-                    except:
-                        pass
-                    #################
-                    # delete_topic(topics[k])
-                    #################
-
-    def __digger(obj, nested_level=0):
-        global next_key
-        global next_value
-        nested_level += 1
-        if type(obj) == dict:
-            for k, v in obj.items():
-                if hasattr(v, '__iter__'):
-                    print(str(nested_level)+'.dT'+nested_level*'    '+'key: %s' % k)
-                    __analyzer(k, v, nested_level)
-                    __digger(v, nested_level)
-                else:
-                    print(str(nested_level)+'.dF'+nested_level*'    '+"key = %s, value = %s" % (k,v))
-                    __checker(k, v)
-                    __analyzer(k, v, nested_level)
-                    print("next_key = %s, next_value = %s" % (next_key, next_value))
-                    if next_key != "" and next_value != "":
-                        print("hui!")
-                        __checker(next_key, next_value)
-                        next_key = ""
-                        next_value = ""
-        elif type(obj) == list:
-            for v in obj:
-                if hasattr(v, '__iter__'):
-                    __digger(v, nested_level)
-                else:
-                    print(str(nested_level)+'.lF'+nested_level*'    '+"key = %s, value = %s" % (k,v))
-        else:
-            print(str(nested_level)+'.oF'+nested_level*'    '+"Object: %s" % obj)
-        print("Nested Level max. = %s" % nested_level)
-
-    print("\nDIGGER\n")
-    __digger(obj)
-
-    print("\nREPLACER\n")
-    __replacer(obj)
-
-    print("\nCOMPREFS\n")
-    __comprefs(obj)
-
-    pretty_print(obj)
-
-    return(obj)
-
 
 def pretty_print(data):
     """
@@ -814,18 +543,17 @@ def main(args):
     # change_password(user, password, 'new_pass')
     """
     global config
-    read_config_file()
     # get_session_id()
 
     parser = argparse.ArgumentParser(description = 'This is a Python script \
-             for DeepaMehta by Juergen Neumann <juergen@junes.eu>. It is free \
+             for DMX by Juergen Neumann <juergen@junes.eu>. It is free \
              software licensed under the GNU General Public License Version 3 \
              and comes with ABSOLUTELY NO WARRANTY.')
-    parser.add_argument('-b','--by_type', type=str,help='Get all items of a TopicType by its topic.type.uri.', required=False)
-    parser.add_argument('-c','--create_user', help='Create a user with -u username and -p password.', action='store_true', required=False, default=None)
+    parser.add_argument('-b','--by_type', type=str, help='Get all items of a TopicType by its topic.type.uri.', required=False)
+    parser.add_argument('-C','--create_user', help='Create a user with -u username and -p password.', action='store_true', required=False, default=None)
     parser.add_argument('-d','--delete_topic', type=int, help='Detele a topic by id.', required=False)
-    parser.add_argument('-f','--file', type=str,help='Creates a new topic from json file.', required=False)
-    parser.add_argument('-i','--instance', type=str,help='Reads config data from /etc/deepamehta/$INSTANCE.conf.', required=False)
+    parser.add_argument('-f','--file', type=str, help='Creates a new topic from json file.', required=False)
+    parser.add_argument('-c','--config_properties', type=str, help='Reads config data from dmx config properties file.', required=False)
     parser.add_argument('-l','--login', help='Login as -u user with password -p instead of admin.', action='store_true', required=False, default=None)
     parser.add_argument('-m','--membership', help='Create a new workspace membership with -w workspace name and -n username of new member.', action='store_true', required=False, default=None)
     parser.add_argument('-n','--new_member', type=str, help='Provide the username of new member.', required=False)
@@ -842,8 +570,10 @@ def main(args):
     ## action on arguments ##
 
     # instance must be first, cause it overwrites the default setting from config
-    if argsdict['instance']:
-        data = read_dmx_config(argsdict['instance'])
+    if argsdict['config_properties']:
+        data = read_dmx_config(argsdict['config_properties'])
+    else:
+	read_config_file()
 
     if argsdict['file']:
         print("Importing json data from file %s" % (argsdict['file']))
@@ -853,7 +583,6 @@ def main(args):
         #~ # print("payload_len: %s" % payload_len)
         if payload_len > 0:
             # dump(payload)
-            deep_inspect(payload)
             # write data
             dm_action_id = (send_data(payload))
             print("CREATED: %s" % dm_action_id)

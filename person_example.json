@@ -1,44 +1,44 @@
 {
-    "type_uri": "dm4.contacts.person",
+    "type_uri": "dmx.contacts.person",
     "childs": {
-        "dm4.contacts.person_name": {
-            "dm4.contacts.first_name": "Anna",
-            "dm4.contacts.last_name": "Baum"
+        "dmx.contacts.person_name": {
+            "dmx.contacts.first_name": "Anna",
+            "dmx.contacts.last_name": "Baum"
         },
-        "dm4.contacts.phone_number#dm4.contacts.phone_entry": [
+        "dmx.contacts.phone_number#dmx.contacts.phone_entry": [
             {
                 "value": "1 234 567890",
                 "assoc": {
                     "childs": {
-                        "dm4.contacts.phone_label": "ref_uri:dm4.contacts.home_phone"
+                        "dmx.contacts.phone_label": "ref_uri:dmx.contacts.home_phone"
                     }
                 }
             }
         ],
-        "dm4.contacts.address#dm4.contacts.address_entry": [
+        "dmx.contacts.address#dmx.contacts.address_entry": [
             {
                 "childs": {
-                    "dm4.contacts.street": "Parkstr. 3",
-                    "dm4.contacts.postal_code": "13187",
-                    "dm4.contacts.city": "Berlin",
-                    "dm4.contacts.country": "Germany"
+                    "dmx.contacts.street": "Parkstr. 3",
+                    "dmx.contacts.postal_code": "13187",
+                    "dmx.contacts.city": "Berlin",
+                    "dmx.contacts.country": "Germany"
                 },
                 "assoc": {
                     "childs": {
-                        "dm4.contacts.address_label": "ref_uri:dm4.contacts.home_address"
+                        "dmx.contacts.address_label": "ref_uri:dmx.contacts.home_address"
                     }
                 }
             },
             {
                 "childs": {
-                    "dm4.contacts.street": "Kinzigstr. 10",
-                    "dm4.contacts.postal_code": "10247",
-                    "dm4.contacts.city": "Berlin",
-                    "dm4.contacts.country": "Germany"
+                    "dmx.contacts.street": "Kinzigstr. 10",
+                    "dmx.contacts.postal_code": "10247",
+                    "dmx.contacts.city": "Berlin",
+                    "dmx.contacts.country": "Germany"
                 },
                 "assoc": {
                     "childs": {
-                        "dm4.contacts.address_label": "ref_uri:dm4.contacts.work_address"
+                        "dmx.contacts.address_label": "ref_uri:dmx.contacts.work_address"
                     }
                 }
             }

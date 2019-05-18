@@ -2,16 +2,9 @@
 py4dmx - dmx.py
 
 The aim of this python script is to provide a set of python functions to play
-with DeepaMehta's REST API.
+with DMX's REST API.
 
-When creating new topics, the script checks for exisiting topics with the same
-name and will try to reuse them in composits, if possible (=aggregations).
-
-So far the script has been tested and developed for objects with simple
-cardinality, eg. one address, one telephone number, etc.
-
-There are still some issues when there is more than one address in a complex
-composites (like the provided json person example).
+There are still some issues!
 
 Some examples:
 
@@ -22,8 +15,8 @@ Some examples:
  * dmx.py -s -l -u "myusername" -p "mypassword"
    will login user "myusername" into deepamehta and output the current session id.
 
- * dmx.py -i "deepamehta" -s
-   looks into the config file /etc/deepamehta/deepamehta.conf to read server settings and 
+ * dmx.py -c /etc/dmx/config.properties -s
+   looks into the config file /etc/dmx/config.properties to read server settings and 
    admin password from there to login to server and output the current session id.
 
  * dmx.py -l -u "myusername" -p "mypassword" -m -w "my shared workspace" -n "pied.piper"
@@ -33,4 +26,6 @@ Some examples:
    creates a new user "otherusername" with "otherpassword" in instance "otherdeepamehta"
 
 
-Copyright (c) 2016-2017, Juergen Neumann, GNU General Public License Version 3
+Copyright (c) 2019 DMX Systems <https://dmx.systems>
+License: GNU General Public License Version 3
+Author: Juergen Neumann <juergen@dmx.systems>
