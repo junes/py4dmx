@@ -13,7 +13,7 @@ Some examples:
    the current session id.
 
  * dmx.py -s -l -u "myusername" -p "mypassword"
-   will login user "myusername" into deepamehta and output the current session id.
+   will login user "myusername" into DMX and output the current session id.
 
  * dmx.py -c /etc/dmx/config.properties -s
    looks into the config file /etc/dmx/config.properties to read server settings and 
@@ -22,10 +22,7 @@ Some examples:
  * dmx.py -l -u "myusername" -p "mypassword" -m -w "my shared workspace" -n "pied.piper"
    adds the user with username "pied.piper" to my workspace named "my shared workspace"
 
- * dmx.py -i "otherdeepamehta" -c -u "otherusername" -p "otherpassword"
-   creates a new user "otherusername" with "otherpassword" in instance "otherdeepamehta"
 
-
-Copyright (c) 2019 DMX Systems <https://dmx.systems>
-License: GNU General Public License Version 3
-Author: Juergen Neumann <juergen@dmx.systems>
+Copyright (c) 2019 DMX Systems <https://dmx.systems>    
+License: GNU General Public License Version 3    
+Author: Juergen Neumann <juergen@dmx.systems>    
