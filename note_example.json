@@ -1,7 +1,7 @@
 {
-   "type_uri": "dmx.notes.note",
+   "typeUri": "dmx.notes.note",
    "childs": {
       "dmx.notes.title": "My Other Note",
-      "dmx.notes.text": "<p>More useless HTML content here<p>"
+      "dmx.notes.text": "<p>My example HTML content here</p>"
    }
 }

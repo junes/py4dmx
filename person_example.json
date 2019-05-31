@@ -1,5 +1,5 @@
 {
-    "type_uri": "dmx.contacts.person",
+    "typeUri": "dmx.contacts.person",
     "childs": {
         "dmx.contacts.person_name": {
             "dmx.contacts.first_name": "Anna",
@@ -31,8 +31,8 @@
             },
             {
                 "childs": {
-                    "dmx.contacts.street": "Kinzigstr. 10",
-                    "dmx.contacts.postal_code": "10247",
+                    "dmx.contacts.street": "Parkstr. 3",
+                    "dmx.contacts.postal_code": "13187",
                     "dmx.contacts.city": "Berlin",
                     "dmx.contacts.country": "Germany"
                 },
