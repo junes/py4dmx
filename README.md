@@ -15,6 +15,9 @@ Some examples:
    reads server setting and credentials from config file dmx.cfg to login and to return
    the current session id.
 
+ * dmx.py -C -u "myusername" -p "mypassword"
+   creates a new user with user name "myusername" and password "mypassword"
+
  * dmx.py -s -l -u "myusername" -p "mypassword"
    will login user "myusername" into DMX and output the current session id.
 
@@ -26,7 +29,8 @@ Some examples:
    adds the user with username "pied.piper" to my workspace named "my shared workspace"
 
  * dmx.py -f note_example.json -w "DMX"
-   creates a new note topic from file note_example.json
+   creates a new note topic from file note_example.json in workspace "DMX".
+
 
 Copyright (c) 2019 DMX Systems <https://dmx.systems>    
 License: GNU General Public License Version 3    
