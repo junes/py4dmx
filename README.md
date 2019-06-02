@@ -8,27 +8,27 @@ There are still some issues!
 
 Some examples:
 
- * dmx.py --help
+ * ```dmx.py --help```  
    shows the list of options.
 
- * dmx.py -s
+ * ```dmx.py -s```  
    reads server setting and credentials from config file dmx.cfg to login and to return
    the current session id.
 
- * dmx.py -C -u "myusername" -p "mypassword"
+ * ```dmx.py -C -u "myusername" -p "mypassword"```  
    creates a new user with user name "myusername" and password "mypassword"
 
- * dmx.py -s -l -u "myusername" -p "mypassword"
+ * ```dmx.py -s -l -u "myusername" -p "mypassword"```  
    will login user "myusername" into DMX and output the current session id.
 
- * dmx.py -c /etc/dmx/config.properties -s
+ * ```dmx.py -c /etc/dmx/config.properties -s```  
    looks into the config file /etc/dmx/config.properties to read server settings and 
    admin password from there to login to server and output the current session id.
 
- * dmx.py -l -u "myusername" -p "mypassword" -m -w "my shared workspace" -n "pied.piper"
+ * ```dmx.py -l -u "myusername" -p "mypassword" -m -w "my shared workspace" -n "pied.piper"```  
    adds the user with username "pied.piper" to my workspace named "my shared workspace"
 
- * dmx.py -f note_example.json -w "DMX"
+ * ```dmx.py -f note_example.json -w "DMX"```  
    creates a new note topic from file note_example.json in workspace "DMX".
 
 
