@@ -69,7 +69,7 @@ def read_config_file():
     if os.path.isfile(config_file):
         config.read(config_file)
     else:
-        print(("ERROR! Config file %s not found." % config_file))
+        print("ERROR! Config file %s not found." % config_file)
         sys.exit(1)
 
 
@@ -90,7 +90,7 @@ def read_dmx_config(config_properties):
             try:
                 key, val = ln.strip().replace(" ", "").split('=', 1)
             except ValueError:
-                print(("INFO: No value found for %s in %s" % (key, dmx_config_file)))
+                print("INFO: No value found for %s in %s" % (key, dmx_config_file))
             else:
                 dmx_params[key.lower()] = val
 
@@ -106,7 +106,7 @@ def read_dmx_config(config_properties):
 
     for mandatory in ['org.osgi.service.http.port', 'dmx.security.initial_admin_password']:
         if mandatory not in list(dmx_params.keys()):
-            print(("ERROR! Could not read config file %s." % dmx_config_file))
+            print("ERROR! Could not read config file %s." % dmx_config_file)
             sys.exit(0)
 
 
@@ -114,14 +114,14 @@ def import_payload(json_filename, default="payload.json"):
     """
     Here we open the file and import the content as json.
     """
-    print(("Reading file %s" % (json_filename)))
+    print("Reading file %s" % (json_filename))
     with open(json_filename, 'r') as data_file:
         payload_json = json.load(data_file)
 
     # Test if the payload is a valid json object and get it sorted.
     try:
         payload = json.loads(json.dumps(payload_json, indent=3, sort_keys=True))
-        print(("LenPayload: %s" % len(payload)))
+        print("LenPayload: %s" % len(payload))
     except:
         print("ERROR! Could not read Payload. Not JSON?")
         sys.exit(1);
@@ -190,7 +190,7 @@ def get_session_id():
     try:
         test_url = opener.open(req)
     except urllib.request.HTTPError as e:
-        print(('Get Session ID Error: '+str(e)))
+        print('Get Session ID Error: '+str(e))
     else:
         for c in cj:
             if c.name == "JSESSIONID":
@@ -206,20 +206,20 @@ def read_request(url):
     port = config.get('Connection', 'port')
     url = 'http://%s:%s/%s' % (server, port, url)
     jsessionid = get_session_id()
-    print(("Read Data %s" % url))
+    print("Read Data %s" % url)
     req = urllib.request.Request(url)
     req.add_header("Cookie", "JSESSIONID=%s" % jsessionid)
     req.add_header("Content-Type", "application/json")
     try:
         response = (json.loads(urllib.request.urlopen(req).read()))
     except urllib.error.HTTPError as e:
-        print(('Read Data Error: '+str(e)))
+        print('Read Data Error: '+str(e))
     except ValueError:
         print('WARNING! No JSON Object found.')
         try:
             response = urllib.request.urlopen(req).read()
         except urllib.error.HTTPError as e:
-            print(('Read Data Error: '+str(e)))
+            print('Read Data Error: '+str(e))
         else:
             return(response)
     else:
@@ -236,7 +236,7 @@ def write_request(url, payload=None, workspace='DMX', method='POST'):
     port = config.get('Connection', 'port')
     url = 'http://%s:%s/%s' % (server, port, url)
     jsessionid = get_session_id()
-    print(("Write Data %s" % url, payload))
+    print("Write Data %s" % url, payload)
     wsid = get_ws_id(workspace)
     req = urllib.request.Request(url)
     req.add_header("Cookie", "JSESSIONID=%s; dmx_workspace_id=%s" % (jsessionid, wsid))
@@ -247,7 +247,7 @@ def write_request(url, payload=None, workspace='DMX', method='POST'):
             response = (json.loads(urllib.request.urlopen(req,
                     (json.dumps(payload)).encode('UTF-8')).read()))
         except urllib.error.HTTPError as e:
-            print(('Write Data Error: '+str(e)))
+            print('Write Data Error: '+str(e))
         else:
             return(response)
     else:
@@ -255,7 +255,7 @@ def write_request(url, payload=None, workspace='DMX', method='POST'):
             # response = (json.loads(urllib.request.urlopen(req).read()))
             response = (urllib.request.urlopen(req).read())
         except urllib.error.HTTPError as e:
-            print(('Write Data Error: '+str(e)))
+            print('Write Data Error: '+str(e))
         else:
             return(response)
 
@@ -268,7 +268,7 @@ def create_user(dm_user='testuser', dm_pass='testpass'):
     users = list(get_items('dmx.accesscontrol.username').values())
     print(users)
     if dm_user in users:
-        print(("ERROR! User '%s' exists." % dm_user))
+        print("ERROR! User '%s' exists." % dm_user)
         sys.exit(1)
     else:
         # create user
@@ -277,7 +277,7 @@ def create_user(dm_user='testuser', dm_pass='testpass'):
         dm_pass = '-SHA256-'+hash_object.hexdigest()
         payload = {'username' : dm_user, 'password' : dm_pass}
         topic_id = write_request(url, payload)["id"]
-        print(("New user '%s' was created with topic_id %s." % (dm_user, topic_id)))
+        print("New user '%s' was created with topic_id %s." % (dm_user, topic_id))
         return
 
 
@@ -294,12 +294,12 @@ def change_password(dm_user, dm_old_pass, dm_new_pass):
     # get id of user_account (not user_name!)
     url = 'core/topic/by_type/dmx.accesscontrol.user_account?include_childs=false'
     topic_id = read_request(url)
-    print(("change Password - Topic ID of user: %s" % topic_id))
+    print("change Password - Topic ID of user: %s" % topic_id)
 
     # get id of private workspace
     url = 'core/topic?field=dmx.workspaces.workspace_name&search=Private%%20Workspace'
     wsnameid = read_request(url)[0]["id"]
-    print(("WSNAMEID: %s" % wsnameid))
+    print("WSNAMEID: %s" % wsnameid)
 
 
     url = ('core/topic/%s/related_topics'
@@ -308,7 +308,7 @@ def change_password(dm_user, dm_old_pass, dm_new_pass):
            'others_topic_type_uri=dmx.workspaces.workspace' % str(wsnameid)
           )
     wsid = read_request(url)
-    print(("Change Password WS ID = %s" % response))
+    print("Change Password WS ID = %s" % response)
 
     # change password
     server = config.get('Connection', 'server')
@@ -331,7 +331,7 @@ def change_password(dm_user, dm_old_pass, dm_new_pass):
         response = (json.loads(urllib.request.urlopen(req,
                     (json.dumps(payload))).read()))
     except urllib.error.HTTPError as e:
-        print(('Change Password Error: '+str(e)))
+        print('Change Password Error: '+str(e))
     else:
         print(response)
 
@@ -341,7 +341,7 @@ def get_ws_id(workspace):
     This function gets the workspace ID for a workspace by its name.
     It's much faster to get it by its uri, if present.
     """
-    print(("Searching Workspace ID for %s" % workspace))
+    print("Searching Workspace ID for %s" % workspace)
     url = ('core/topic?field=dmx.workspaces.workspace_name&search="%s"' % workspace.replace(' ', '%20'))
     wsnameid = read_request(url)[0]["id"]
     url = ('core/topic/%s/related_topics'
@@ -350,7 +350,7 @@ def get_ws_id(workspace):
            'others_topic_type_uri=dmx.workspaces.workspace' %
            str(wsnameid))
     ws_id = read_request(url)[0]["id"]
-    print(("WS ID = %s" % ws_id))
+    print("WS ID = %s" % ws_id)
     return(ws_id)
 
 
@@ -496,7 +496,7 @@ def delete_topic(topic_id):
     try:
         response = (json.loads(urllib.request.urlopen(req).read()))
     except urllib.error.HTTPError as e:
-        print(('Delete Topic Error: '+str(e)))
+        print('Delete Topic Error: '+str(e))
     else:
         return(response)
 
@@ -506,7 +506,7 @@ def pretty_print(data):
     This function just prints the json data in a pretty way. :)
     """
     # print("Data: %s" % type(data))
-    print((json.dumps(data, indent=3, sort_keys=True)))
+    print(json.dumps(data, indent=3, sort_keys=True))
     return
 
 
@@ -546,16 +546,16 @@ def main(args):
         read_config_file()
 
     if argsdict['file']:
-        print(("Importing json data from file %s" % (argsdict['file'])))
+        print("Importing json data from file %s" % (argsdict['file']))
         payload = import_payload(str(argsdict['file']))
         payload_len = len(payload)
         if argsdict['workspace']:
             workspace = argsdict['workspace']
             if payload_len > 0:
                 dm_action_id = (send_data(payload, workspace))
-                print(("CREATED: %s" % dm_action_id))
+                print("CREATED: %s" % dm_action_id)
             else:
-                print(("ERROR! Missing data in file %s" % (argsdict['file'])))
+                print("ERROR! Missing data in file %s" % (argsdict['file']))
         else:
             print("ERROR! Missing workspace declaration.")
 
@@ -580,12 +580,12 @@ def main(args):
     if argsdict['workspace'] and (argsdict['ws_type'] != None) and not argsdict['membership']:
         # Does not work with 'private' for now!
         if argsdict['ws_type'] in ["confidential", "collaborative", "public", "common"]:
-            print(("Creating new %s workspace %s" % (argsdict['ws_type'],argsdict['workspace'])))
+            print("Creating new %s workspace %s" % (argsdict['ws_type'],argsdict['workspace']))
             data = create_ws(argsdict['workspace'], argsdict['ws_type'])
         elif argsdict['ws_type'] == "private":
-            print(("Sorry! %s is not working yet via scripting." % argsdict['ws_type']))
+            print("Sorry! %s is not working yet via scripting." % argsdict['ws_type'])
         else:
-            print(("ERROR! %s is not a valid workshop type." % argsdict['ws_type']))
+            print("ERROR! %s is not a valid workshop type." % argsdict['ws_type'])
 
     if argsdict['login']:
         if (argsdict['user'] != None) and (argsdict['password'] != None):
