@@ -37,7 +37,6 @@ jpn - 20170231
 
 import os, sys, json
 import urllib.request, urllib.parse, urllib.error, http.cookiejar, base64
-import asyncio, websockets
 import configparser
 import hashlib
 import argparse
@@ -286,6 +285,9 @@ def change_password(dm_user, dm_old_pass, dm_new_pass):
     """
     This function changes a user's password
     """
+    ###
+    ### Needs testing and might need adopting to DMX
+    ###
     base64string = base64.encodestring("%s:%s" %
                     (dm_user, dm_old_pass)).replace("\n", "")
 
@@ -479,6 +481,9 @@ def delete_topic(topic_id):
     """
     This function deletes a topic by its id from the server.
     """
+    ###
+    ### Still needs to be adopted to make use of write_request
+    ###
     server = config.get('Connection', 'server')
     port = config.get('Connection', 'port')
     jsessionid = get_session_id()
