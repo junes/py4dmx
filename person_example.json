@@ -2,8 +2,8 @@
     "typeUri": "dmx.contacts.person",
     "childs": {
         "dmx.contacts.person_name": {
-            "dmx.contacts.first_name": "Anna",
-            "dmx.contacts.last_name": "Baum"
+            "dmx.contacts.first_name": "Marta",
+            "dmx.contacts.last_name": "Miller"
         },
         "dmx.contacts.phone_number#dmx.contacts.phone_entry": [
             {
@@ -25,14 +25,16 @@
                 },
                 "assoc": {
                     "childs": {
-                        "dmx.contacts.address_label": "ref_uri:dmx.contacts.home_address"
+                        "dmx.contacts.address_label": {
+                            "value": "ref_uri:dmx.contacts.home_address"
+                        }
                     }
                 }
             },
             {
                 "childs": {
-                    "dmx.contacts.street": "Parkstr. 3",
-                    "dmx.contacts.postal_code": "13187",
+                    "dmx.contacts.street": "Alexanderplatz 1",
+                    "dmx.contacts.postal_code": "10178",
                     "dmx.contacts.city": "Berlin",
                     "dmx.contacts.country": "Germany"
                 },

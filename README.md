@@ -8,6 +8,9 @@ There are still some issues!
 
 Some examples:
 
+ * dmx.py --help
+   shows the list of options.
+
  * dmx.py -s
    reads server setting and credentials from config file dmx.cfg to login and to return
    the current session id.
@@ -22,6 +25,8 @@ Some examples:
  * dmx.py -l -u "myusername" -p "mypassword" -m -w "my shared workspace" -n "pied.piper"
    adds the user with username "pied.piper" to my workspace named "my shared workspace"
 
+ * dmx.py -f note_example.json -w "DMX"
+   creates a new note topic from file note_example.json
 
 Copyright (c) 2019 DMX Systems <https://dmx.systems>    
 License: GNU General Public License Version 3    

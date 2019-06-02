@@ -43,16 +43,8 @@ import hashlib
 import argparse
 
 ## define global variables
-config = []        # The data required to access and login to dmx
+config = []    # The data required to access and login to dmx
 
-## The user we are modifying, e.g. when creating a new user
-## This is supposed to become a command line option
-dm_user = "new_user"
-dm_pass = "you_should_use_a_better_password_here!"
-
-## for simple topics
-next_key = ""
-next_value = ""
 
 def read_config_file():
     """
@@ -77,9 +69,6 @@ def read_config_file():
     # config.read(DEFAULT_CONFIG)
     if os.path.isfile(config_file):
         config.read(config_file)
-        # server = config.get('Connection', 'server')
-        # port = config.get('Connection', 'port')
-        # workspace = config.get('Connection', 'workspace')
     else:
         print(("ERROR! Config file %s not found." % config_file))
         sys.exit(1)
@@ -92,15 +81,12 @@ def read_dmx_config(config_properties):
     """
     global config
     config = ConfigParser.SafeConfigParser()
-    # config.read(DEFAULT_CONFIG)
     dmx_params={}
     dmx_config_file=str(config_properties)
-    # print(dmx_config_file)
     if os.access(dmx_config_file, os.R_OK):
         with open(dmx_config_file) as f_in:
             lines = [_f for _f in (line.rstrip() for line in f_in) if _f]
     for ln in lines:
-        # print(ln)
         if not ln[0] in ('', ' ', '#', ';'):
             try:
                 key, val = ln.strip().replace(" ", "").split('=', 1)
@@ -108,9 +94,7 @@ def read_dmx_config(config_properties):
                 print(("INFO: No value found for %s in %s" % (key, dmx_config_file)))
             else:
                 dmx_params[key.lower()] = val
-    # print(dmx_params['org.osgi.service.http.port'])
-    # print(dmx_params['dmx.security.initial_admin_password'])
-    ## , dmx_params['dmx.security.initial_admin_password'])
+
     port=dmx_params['org.osgi.service.http.port']
     password=dmx_params['dmx.security.initial_admin_password']
     config.add_section('Credentials')
@@ -123,7 +107,6 @@ def read_dmx_config(config_properties):
 
     for mandatory in ['org.osgi.service.http.port', 'dmx.security.initial_admin_password']:
         if mandatory not in list(dmx_params.keys()):
-            # open(os.environ['HOME']+'/.xmppacct','w').write('#Uncomment fields before use and type in correct credentials.\n#JID=romeo@montague.net/resource (/resource is optional)\n#PASSWORD=juliet\n')
             print(("ERROR! Could not read config file %s." % dmx_config_file))
             sys.exit(0)
 
@@ -154,8 +137,8 @@ def query_yes_no(question, default="no"):
 
     "question" is a string that is presented to the user.
     "default" is the presumed answer if the user just hits <Enter>.
-        It must be "yes" (the default), "no" or None (meaning
-        an answer is required of the user).
+    It must be "yes" (the default), "no" or None (meaning
+    an answer is required of the user).
 
     The "answer" return value is True for "yes" or False for "no".
     """
@@ -189,44 +172,9 @@ def get_base64():
     authname = config.get('Credentials', 'authname') # usualy the admin user
     password = config.get('Credentials', 'password') # usualy the admin password
     authstring = bytes((str(authname + ':' + password)), 'UTF-8')
-    # print("authstring: %s" % authstring)
     base64string = (base64.b64encode(authstring)).decode('UTF-8')
-    # print("base64string: %s" % base64string)
     return(base64string)
 
-def connect_websocket():
-    """
-    This function creates a websocket connection with DM host
-    """
-    # connected = set()
-    ### FIXME
-    ### needs to read config settings
-    print('Connect to websocket')
-    async def handler(websocket='ws://localhost:8081', path='systems.dmx.webclient'):
-        # bound_handler = functools.partial(handler, extra_argument='systems.dmx.webclient')
-        # async def handler():
-        async with websockets.connect(uri='ws://localhost:8081/', create_protocol='systems.dmx.webclient') as websocket:
-        # async with websockets.connect('ws://localhost:8081', 'systems.dmx.webclient') as websocket:
-            # await websocket.send("Hello world!")
-            # await websocket.recv()
-            # Register.
-            # connected.add(websocket)
-            # response = await websocket.recv()
-            response = await websocket.ping()
-            print('Websocket respone %s' % response)
-        # ~ try:
-            # ~ # Implement logic here.
-            # ~ await asyncio.wait([ws.send("Hello!") for ws in connected])
-            # ~ await asyncio.sleep(10)
-        # ~ finally:
-            # ~ # Unregister.
-            # ~ connected.remove(websocket)
-
-            # start_server = websockets.serve(bound_handler, '127.0.0.1', 8765)
-            # asyncio.get_event_loop().run_until_complete(start_server)
-
-    asyncio.get_event_loop().run_until_complete(handler())
-    return()
 
 def get_session_id():
     """
@@ -248,7 +196,6 @@ def get_session_id():
         for c in cj:
             if c.name == "JSESSIONID":
                 jsessionid = c.value
-        # connect_websocket()
         return(jsessionid)
 
 
@@ -280,10 +227,12 @@ def read_request(url):
         return(response)
 
 
-def write_request(url, payload, workspace='DMX'):
+def write_request(url, payload=None, workspace='DMX', method='POST'):
     """
     Writes the data to a given URL.
     """
+    ### The wsid is used for the Cockie here!
+    ### Not for the payload - this might be confusing
     server = config.get('Connection', 'server')
     port = config.get('Connection', 'port')
     url = 'http://%s:%s/%s' % (server, port, url)
@@ -293,20 +242,26 @@ def write_request(url, payload, workspace='DMX'):
     req = urllib.request.Request(url)
     req.add_header("Cookie", "JSESSIONID=%s; dmx_workspace_id=%s" % (jsessionid, wsid))
     req.add_header("Content-Type", "application/json")
-    ###
-    ### data = urllib.parse.urlencode(d).encode("utf-8")
-    ###
-    # connect_websocket()
-    try:
-        response = (json.loads(urllib.request.urlopen(req,
+    req.get_method = lambda: method
+    if payload:
+        try:
+            response = (json.loads(urllib.request.urlopen(req,
                     (json.dumps(payload)).encode('UTF-8')).read()))
-    except urllib.error.HTTPError as e:
-        print(('Write Data Error: '+str(e)))
+        except urllib.error.HTTPError as e:
+            print(('Write Data Error: '+str(e)))
+        else:
+            return(response)
     else:
-        return(response)
+        try:
+            # response = (json.loads(urllib.request.urlopen(req).read()))
+            response = (urllib.request.urlopen(req).read())
+        except urllib.error.HTTPError as e:
+            print(('Write Data Error: '+str(e)))
+        else:
+            return(response)
 
 
-def create_user(dm_user, dm_pass):
+def create_user(dm_user='testuser', dm_pass='testpass'):
     """
     This function creates a new user on the server.
     """
@@ -319,7 +274,7 @@ def create_user(dm_user, dm_pass):
     else:
         # create user
         url = 'accesscontrol/user_account'
-        hash_object = hashlib.sha256(dm_pass)
+        hash_object = hashlib.sha256(dm_pass.encode('UTF-8'))
         dm_pass = '-SHA256-'+hash_object.hexdigest()
         payload = {'username' : dm_user, 'password' : dm_pass}
         topic_id = write_request(url, payload)["id"]
@@ -385,7 +340,6 @@ def get_ws_id(workspace):
     It's much faster to get it by its uri, if present.
     """
     print(("Searching Workspace ID for %s" % workspace))
-    # url = ('core/topic?field=dmx.workspaces.workspace_name&search="%s"' % urllib.quote(workspace, safe=''))
     url = ('core/topic?field=dmx.workspaces.workspace_name&search="%s"' % workspace.replace(' ', '%20'))
     wsnameid = read_request(url)[0]["id"]
     url = ('core/topic/%s/related_topics'
@@ -403,46 +357,28 @@ def create_ws(workspace, ws_type):
     This function creates a workspace with workspace uri
     (needed for id) on the server.
     """
-    server = config.get('Connection', 'server')
-    port = config.get('Connection', 'port')
-    jsessionid = get_session_id()
+    ### The create-workspace request changed:
+    ###
+    ### POST /workspace?name=...&uri=...&sharing_mode_uri=...
+    ### Instead of path params query params are used now.
+    ### `uri` is optional.
     uri = workspace.lower()+'.uri'
-    url = ('http://%s:%s/workspace/%s/%s/dmx.workspaces.%s' %
-            (server, port, workspace, uri, ws_type))
-    req = urllib.request.Request(url)
-    req.add_header("Cookie", "JSESSIONID=%s" % jsessionid)
-    req.add_header("Content-Type", "application/json")
-    try:
-        #response = (json.loads(urllib2.urlopen(req, data='')))
-        response = urllib.request.urlopen(req, data='')
-    except urllib.error.HTTPError as e:
-        print(('Create WS Error: '+str(e)))
-    else:
-        print('Create WS: success')
-        #return(response)
+    url = ('workspace?name=%s&uri=%s&sharing_mode_uri=dmx.workspaces.%s' %
+            (workspace, uri, ws_type))
+    topic_id = write_request(url)["id"]
 
 
-def create_member(workspace, dm_user):
+def create_member(workspace='DMX', dm_user='testuser'):
     """
     This function creates a user memebrship association for
     the workspace on the server.
     """
-    print(("Creating Workspace membership for user %s in %s" % (dm_user, workspace)))
-    server = config.get('Connection', 'server')
-    port = config.get('Connection', 'port')
-    jsessionid = get_session_id()
+    print("Creating Workspace membership for user %s in %s" % (dm_user, workspace))
     wsid = get_ws_id(workspace)
-    url = ('http://%s:%s/accesscontrol/user/%s/workspace/%s' %
-            (server, port, dm_user, wsid))
-    req = urllib.request.Request(url)
-    req.add_header("Cookie", "JSESSIONID=%s" % jsessionid)
-    req.add_header("Content-Type", "application/json")
-    try:
-        urllib.request.urlopen(req, data='')
-    except urllib.error.HTTPError as e:
-        print(('Create Member Error: '+str(e)))
-    else:
-        print('Create Member: success')
+    url = ('accesscontrol/user/%s/workspace/%s' %
+            (dm_user, wsid))
+    # topic_id = write_request(url)["id"]
+    topic_id = write_request(url)
 
 
 def send_data(payload, workspace='DMX'):
@@ -560,7 +496,6 @@ def delete_topic(topic_id):
         return(response)
 
 
-
 def pretty_print(data):
     """
     This function just prints the json data in a pretty way. :)
@@ -575,9 +510,6 @@ def main(args):
     ToDo:
     # change_password(user, password, 'new_pass')
     """
-    global config
-    # get_session_id()
-
     parser = argparse.ArgumentParser(description = 'This is a Python script \
              for DMX by Juergen Neumann <juergen@junes.eu>. It is free \
              software licensed under the GNU General Public License Version 3 \
@@ -585,7 +517,7 @@ def main(args):
     parser.add_argument('-b','--by_type', type=str, help='Get all items of a TopicType by its topic.type.uri.', required=False)
     parser.add_argument('-C','--create_user', help='Create a user with -u username and -p password.', action='store_true', required=False, default=None)
     parser.add_argument('-d','--delete_topic', type=int, help='Detele a topic by id.', required=False)
-    parser.add_argument('-f','--file', type=str, help='Creates a new topic from json file.', required=False)
+    parser.add_argument('-f','--file', type=str, help='Creates a new topic from json file in a specified workspace with -f file name and -w workspace name.', required=False)
     parser.add_argument('-c','--config_properties', type=str, help='Reads config data from dmx config properties file.', required=False)
     parser.add_argument('-l','--login', help='Login as -u user with password -p instead of admin.', action='store_true', required=False, default=None)
     parser.add_argument('-m','--membership', help='Create a new workspace membership with -w workspace name and -n username of new member.', action='store_true', required=False, default=None)
@@ -611,16 +543,16 @@ def main(args):
     if argsdict['file']:
         print(("Importing json data from file %s" % (argsdict['file'])))
         payload = import_payload(str(argsdict['file']))
-        #~ # print(type(payload))
         payload_len = len(payload)
-        #~ # print("payload_len: %s" % payload_len)
-        if payload_len > 0:
-            # dump(payload)
-            # write data
-            dm_action_id = (send_data(payload))
-            print(("CREATED: %s" % dm_action_id))
+        if argsdict['workspace']:
+            workspace = argsdict['workspace']
+            if payload_len > 0:
+                dm_action_id = (send_data(payload, workspace))
+                print(("CREATED: %s" % dm_action_id))
+            else:
+                print(("ERROR! Missing data in file %s" % (argsdict['file'])))
         else:
-            print(("ERROR! Missing data in file %s" % (argsdict['file'])))
+            print("ERROR! Missing workspace declaration.")
 
     if argsdict['create_user']:
         if (argsdict['user'] != None) and (argsdict['password'] != None):
@@ -640,7 +572,7 @@ def main(args):
         data = get_topic(argsdict['get_topic'])
         pretty_print(data)
 
-    if argsdict['workspace'] and (argsdict['ws_type'] != None) and not argsdict['member']:
+    if argsdict['workspace'] and (argsdict['ws_type'] != None) and not argsdict['membership']:
         # Does not work with 'private' for now!
         if argsdict['ws_type'] in ["confidential", "collaborative", "public", "common"]:
             print(("Creating new %s workspace %s" % (argsdict['ws_type'],argsdict['workspace'])))
