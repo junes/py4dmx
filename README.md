@@ -18,7 +18,7 @@ Some examples:
    the current session id.
 
  * `dmx.py -C -u "myusername" -p "mypassword"`  
-   creates a new user with user name "myusername" and password "mypassword"
+   creates a new user with user name "myusername" and password "mypassword".
 
  * `dmx.py -s -l -u "myusername" -p "mypassword"`  
    will login user "myusername" into DMX and output the current session id.
@@ -28,7 +28,7 @@ Some examples:
    admin password from there to login to server and output the current session id.
 
  * `dmx.py -l -u "myusername" -p "mypassword" -m -w "my shared workspace" -n "pied.piper"`  
-   adds the user with username "pied.piper" to my workspace named "my shared workspace"
+   adds the user with username "pied.piper" to my workspace named "my shared workspace".
 
  * `dmx.py -f note_example.json -w "DMX"`  
    creates a new note topic from file note_example.json in workspace "DMX".
