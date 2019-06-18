@@ -211,7 +211,7 @@ def read_request(url):
     req.add_header("Cookie", "JSESSIONID=%s" % jsessionid)
     req.add_header("Content-Type", "application/json")
     try:
-        response = (json.loads(urllib.request.urlopen((req).encode('UTF-8')).read()))
+        response = (json.loads(urllib.request.urlopen(req).read()))
     except urllib.error.HTTPError as e:
         print('Read Data Error: '+str(e))
     except ValueError:
