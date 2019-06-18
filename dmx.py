@@ -207,11 +207,11 @@ def read_request(url):
     url = 'http://%s:%s/%s' % (server, port, url)
     jsessionid = get_session_id()
     print("Read Data %s" % url)
-    req = urllib.request.Request(url.decode('UTF-8'))
+    req = urllib.request.Request(url)
     req.add_header("Cookie", "JSESSIONID=%s" % jsessionid)
     req.add_header("Content-Type", "application/json")
     try:
-        response = (json.loads(urllib.request.urlopen(req).read()))
+        response = (json.loads(urllib.request.urlopen(req).read().decode('UTF-8')))
     except urllib.error.HTTPError as e:
         print('Read Data Error: '+str(e))
     except ValueError:
