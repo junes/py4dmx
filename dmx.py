@@ -407,7 +407,7 @@ def get_data(datapath):
     This function fetches the data according to datapath from
     the server and returns the data.
     """
-    url = ('core/%s?children=true' % datapath)
+    url = ('core/%s?children' % datapath)
     return(read_request(url))
 
 
