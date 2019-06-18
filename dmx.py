@@ -292,7 +292,7 @@ def change_password(dm_user, dm_old_pass, dm_new_pass):
                     (dm_user, dm_old_pass)).replace("\n", "")
 
     # get id of user_account (not user_name!)
-    url = 'core/topic/by_type/dmx.accesscontrol.user_account?include_childs=false'
+    url = 'core/topic/by_type/dmx.accesscontrol.user_account?include_children=false'
     topic_id = read_request(url)
     print("change Password - Topic ID of user: %s" % topic_id)
 
@@ -323,7 +323,7 @@ def change_password(dm_user, dm_old_pass, dm_new_pass):
     hash_object = hashlib.sha256(dm_new_pass)
     dm_new_pass = '-SHA256-'+hash_object.hexdigest()
     payload = {
-        'childs': {
+        'children': {
             'dmx.accesscontrol.password': dm_new_pass
         }
     }
@@ -398,7 +398,7 @@ def get_topic(topic_id):
     This function fetches the data according to datapath from
     the server and returns the data.
     """
-    url = ('core/topic/%s?include_childs=true' % topic_id)
+    url = ('core/topic/%s?include_children=true' % topic_id)
     return(read_request(url))
 
 
@@ -407,7 +407,7 @@ def get_data(datapath):
     This function fetches the data according to datapath from
     the server and returns the data.
     """
-    url = ('core/%s?include_childs=true' % datapath)
+    url = ('core/%s?include_children=true' % datapath)
     return(read_request(url))
 
 
