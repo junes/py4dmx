@@ -297,8 +297,9 @@ def change_password(dm_user, dm_old_pass, dm_new_pass):
     print("change Password - Topic ID of user: %s" % topic_id)
 
     # get id of private workspace
-    url = 'core/topic?field=dmx.workspaces.workspace_name&search=Private%%20Workspace'
-    wsnameid = read_request(url)[0]["id"]
+    url = 'core/topic?type_uri=dmx.workspaces.workspace_name&query=Private%%20Workspace'
+    # wsnameid = read_request(url)[0]["id"]
+    wsnameid = json.dumps(read_request(url))[0]
     print("WSNAMEID: %s" % wsnameid)
 
 
@@ -342,8 +343,10 @@ def get_ws_id(workspace):
     It's much faster to get it by its uri, if present.
     """
     print("Searching Workspace ID for %s" % workspace)
-    url = ('core/topic?field=dmx.workspaces.workspace_name&search="%s"' % workspace.replace(' ', '%20'))
-    wsnameid = read_request(url)[0]["id"]
+    url = ('core/topic?type_uri=dmx.workspaces.workspace_name&query="%s"' % workspace.replace(' ', '%20'))
+    # wsnameid = read_request(url)[0]["id"]
+    wsnameid = read_request(url)["topics"][0]["id"]
+    # print("WSNAME: %s" % wsnameid )
     url = ('core/topic/%s/related_topics'
            '?assoc_type_uri=dmx.core.composition&my_role_type_uri='
            'dmx.core.child&others_role_type_uri=dmx.core.parent&'
