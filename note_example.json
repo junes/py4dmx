@@ -1,6 +1,6 @@
 {
    "typeUri": "dmx.notes.note",
-   "childs": {
+   "children": {
       "dmx.notes.title": "My Other Note",
       "dmx.notes.text": "<p>My example HTML content here</p>"
    }

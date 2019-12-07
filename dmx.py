@@ -340,7 +340,14 @@ def get_ws_id(workspace):
     """
     print("Searching Workspace ID for %s" % workspace)
     url = ('core/topic?type_uri=dmx.workspaces.workspace_name&query="%s"' % workspace.replace(' ', '%20'))
-    wsnameid = read_request(url)["topics"][0]["id"]
+    # find the workspace_name in the result
+    topics = read_request(url)["topics"]
+    for topic in topics:
+	# find the workspace_name in the result
+        if topic['typeUri'] == 'dmx.workspaces.workspace_name':
+    	    wsnameid = (topic['id'])
+    	    break
+    print("WS NAME ID = %s" % wsnameid)
     url = ('core/topic/%s/related_topics'
            '?assoc_type_uri=dmx.core.composition&my_role_type_uri='
            'dmx.core.child&others_role_type_uri=dmx.core.parent&'
@@ -376,7 +383,6 @@ def create_member(workspace='DMX', dm_user='testuser'):
     wsid = get_ws_id(workspace)
     url = ('accesscontrol/user/%s/workspace/%s' %
             (dm_user, wsid))
-    # topic_id = write_request(url)["id"]
     topic_id = write_request(url)
 
 
@@ -513,7 +519,7 @@ def main(args):
     # change_password(user, password, 'new_pass')
     """
     parser = argparse.ArgumentParser(description = 'This is a Python script \
-             for DMX by Juergen Neumann <juergen@junes.eu>. It is free \
+             for DMX by Juergen Neumann <juergen@dmx.systems>. It is free \
              software licensed under the GNU General Public License Version 3 \
              and comes with ABSOLUTELY NO WARRANTY.')
     parser.add_argument('-b','--by_type', type=str, help='Get all items of a TopicType by its topic.type.uri.', required=False)
@@ -529,18 +535,26 @@ def main(args):
     parser.add_argument('-s','--get_session_id', help='Get a valid session id.', action='store_true', required=False, default=None)
     parser.add_argument('-t','--get_topic', type=int, help='Get all data of a topic id.', required=False)
     parser.add_argument('-u','--user', type=str, help='Provide a username.', required=False)
-    parser.add_argument('-w','--workspace', type=str, help='Create a new workspace by name with -T type.', required=False)
+    parser.add_argument('-w','--workspace', type=str, help='Create a new workspace by name with -T type or just the name of a workspace.', required=False)
     parser.add_argument('-T','--ws_type', type=str, help='Define Type of the new workspace.', required=False)
     args = parser.parse_args()
     argsdict = vars(args)
 
-    ## action on arguments ##
+    ## action on arguments (order matters!) ##
 
     # instance must be first, cause it overwrites the default setting from config
     if argsdict['config_properties']:
         data = read_dmx_config(argsdict['config_properties'])
     else:
         read_config_file()
+
+    # login is next, as one may want to manually set who logs in
+    if argsdict['login']:
+        if (argsdict['user'] != None) and (argsdict['password'] != None):
+            config.set('Credentials', 'authname', argsdict['user']) # usualy the admin password
+            config.set('Credentials', 'password', argsdict['password']) # usualy the admin password
+        else:
+            print("ERROR! Missing username or password.")
 
     if argsdict['file']:
         print("Importing json data from file %s" % (argsdict['file']))
@@ -583,13 +597,6 @@ def main(args):
             print("Sorry! %s is not working yet via scripting." % argsdict['ws_type'])
         else:
             print("ERROR! %s is not a valid workshop type." % argsdict['ws_type'])
-
-    if argsdict['login']:
-        if (argsdict['user'] != None) and (argsdict['password'] != None):
-            config.set('Credentials', 'authname', argsdict['user']) # usualy the admin password
-            config.set('Credentials', 'password', argsdict['password']) # usualy the admin password
-        else:
-            print("ERROR! Missing username or password.")
 
     if argsdict['get_session_id']:
         data = get_session_id()
