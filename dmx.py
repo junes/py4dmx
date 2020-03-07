@@ -236,24 +236,29 @@ def write_request(url, payload=None, workspace='DMX', method='POST'):
     port = config.get('Connection', 'port')
     url = 'http://%s:%s/%s' % (server, port, url)
     jsessionid = get_session_id()
-    print("Write Data %s" % url, payload)
+    print("Write Data %s" % url)
     wsid = get_ws_id(workspace)
     req = urllib.request.Request(url)
     req.add_header("Cookie", "JSESSIONID=%s; dmx_workspace_id=%s" % (jsessionid, wsid))
     req.add_header("Content-Type", "application/json")
     req.get_method = lambda: method
     if payload:
+        if payload == "tbd":
+            payload = {}
+        print("Got payload.")
         try:
+            # response = (json.loads(urllib.request.urlopen(req,
+            #         (json.dumps(payload)).encode('UTF-8')).read().decode('UTF-8')))
             response = (json.loads(urllib.request.urlopen(req,
-                    (json.dumps(payload)).encode('UTF-8')).read().decode('UTF-8')))
+                    (json.dumps(payload)).encode('UTF-8')).read()))
         except urllib.error.HTTPError as e:
             print('Write Data Error: '+str(e))
         else:
             return(response)
     else:
+        print("Got no payload.")
         try:
-            # response = (json.loads(urllib.request.urlopen(req).read()))
-            response = (urllib.request.urlopen(req).read())
+            response = (json.loads(urllib.request.urlopen(req).read()))
         except urllib.error.HTTPError as e:
             print('Write Data Error: '+str(e))
         else:
@@ -279,6 +284,36 @@ def create_user(dm_user='testuser', dm_pass='testpass'):
         topic_id = write_request(url, payload)["id"]
         print("New user '%s' was created with topic_id %s." % (dm_user, topic_id))
         return
+
+
+def create_topicmap(tm_name, tm_type='dmx.topicmaps.topicmap'):
+    """
+    This function creates a new topicmap on the server.
+    """
+    # check if topicmap exits
+    maps = list(get_items('dmx.topicmaps.topicmap').values())
+    print(maps)
+    if tm_name in maps:
+        print("ERROR! Map '%s' exists." % tm_name)
+        sys.exit(1)
+    else:
+        # url = ('topicmap?name="%s"&topicmap_type_uri="%s"&private=false' % (tm_name.replace(' ', '%20'), tm_type))
+        url = ('topicmap?name="%s"&topicmap_type_uri=dmx.topicmaps.topicmap' % tm_name.replace(' ', '%20'))
+        # payload = json.loads('{}')
+        try:
+            data = {'tbd': 'tbd'}
+            payload = json.loads(json.dumps(data, indent=3, sort_keys=True))
+            print("LenPayload: %s" % len(payload))
+        except:
+            print("ERROR! Could not read Payload. Not JSON?")
+            sys.exit(1);
+
+        pretty_print(payload)
+
+        #topic_id = write_request(url)["id"]
+        topic_id = write_request(url, payload)["id"]
+        # print("New topicmap '%s' was created with topic_id %s." % (tm_name, topic_id))
+        return(topic_id)
 
 
 def change_password(dm_user, dm_old_pass, dm_new_pass):
@@ -370,8 +405,9 @@ def create_ws(workspace, ws_type):
     ### `uri` is optional.
     uri = workspace.lower()+'.uri'
     url = ('workspace?name=%s&uri=%s&sharing_mode_uri=dmx.workspaces.%s' %
-            (workspace, uri, ws_type))
+            (workspace.replace(' ', '%20'), uri.replace(' ', '%20'), ws_type))
     topic_id = write_request(url)["id"]
+    return(topic_id)
 
 
 def create_member(workspace='DMX', dm_user='testuser'):
@@ -383,8 +419,9 @@ def create_member(workspace='DMX', dm_user='testuser'):
     wsid = get_ws_id(workspace)
     url = ('accesscontrol/user/%s/workspace/%s' %
             (dm_user, wsid))
-    topic_id = write_request(url)
-
+    # topic_id = write_request(url)
+    write_request(url)
+    return
 
 def send_data(payload, workspace='DMX'):
     """
@@ -392,6 +429,7 @@ def send_data(payload, workspace='DMX'):
     the workspace name on the server.
     """
     url = 'core/topic/'
+    # topic_id = write_request(url, payload, workspace)["topic"]["id"]
     topic_id = write_request(url, payload, workspace)["id"]
     return(topic_id)
 
@@ -415,7 +453,7 @@ def get_data(datapath):
 
 
 def get_items(topictype):
-    """
+    """ 
     This function searches for topics of the specified topictype and
     returns the items, if exists
     """
@@ -524,6 +562,7 @@ def main(args):
              and comes with ABSOLUTELY NO WARRANTY.')
     parser.add_argument('-b','--by_type', type=str, help='Get all items of a TopicType by its topic.type.uri.', required=False)
     parser.add_argument('-C','--create_user', help='Create a user with -u username and -p password.', action='store_true', required=False, default=None)
+    parser.add_argument('-M','--create_topicmap', type=str, help='Create a new topicmap with given name', required=False)
     parser.add_argument('-d','--delete_topic', type=int, help='Detele a topic by id.', required=False)
     parser.add_argument('-f','--file', type=str, help='Creates a new topic from json file in a specified workspace with -f file name and -w workspace name.', required=False)
     parser.add_argument('-c','--config_properties', type=str, help='Reads config data from dmx config properties file.', required=False)
@@ -563,8 +602,8 @@ def main(args):
         if argsdict['workspace']:
             workspace = argsdict['workspace']
             if payload_len > 0:
-                dm_action_id = (send_data(payload, workspace))
-                print("CREATED: %s" % dm_action_id)
+                data = send_data(payload, workspace)
+                print(data)
             else:
                 print("ERROR! Missing data in file %s" % (argsdict['file']))
         else:
@@ -575,6 +614,14 @@ def main(args):
             data = create_user(argsdict['user'], argsdict['password'])
         else:
             print("ERROR! Missing username or password.")
+
+    if argsdict['create_topicmap']:
+	# still missing: set type of new map (default is topicmap)
+        if (argsdict['create_topicmap'] != None):
+            data = create_topicmap(argsdict['create_topicmap'])
+            print(data)
+        else:
+            print("ERROR! Missing name of new topicmap.")
 
     if argsdict['by_type']:
         data = get_items(argsdict['by_type'])
@@ -593,6 +640,7 @@ def main(args):
         if argsdict['ws_type'] in ["confidential", "collaborative", "public", "common"]:
             print("Creating new %s workspace %s" % (argsdict['ws_type'],argsdict['workspace']))
             data = create_ws(argsdict['workspace'], argsdict['ws_type'])
+            print(data)
         elif argsdict['ws_type'] == "private":
             print("Sorry! %s is not working yet via scripting." % argsdict['ws_type'])
         else:
