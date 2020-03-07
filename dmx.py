@@ -286,19 +286,20 @@ def create_user(dm_user='testuser', dm_pass='testpass'):
         return
 
 
-def create_topicmap(tm_name, tm_type='dmx.topicmaps.topicmap'):
+def create_topicmap(tm_name, tm_type='dmx.topicmaps.topicmap', workspace='DMX'):
     """
     This function creates a new topicmap on the server.
     """
-    # check if topicmap exits
+    # check if topicmap exits (globally!!!)
     maps = list(get_items('dmx.topicmaps.topicmap').values())
+    print(tm_name)
     print(maps)
     if tm_name in maps:
         print("ERROR! Map '%s' exists." % tm_name)
         sys.exit(1)
     else:
         # url = ('topicmap?name="%s"&topicmap_type_uri="%s"&private=false' % (tm_name.replace(' ', '%20'), tm_type))
-        url = ('topicmap?name="%s"&topicmap_type_uri=dmx.topicmaps.topicmap' % tm_name.replace(' ', '%20'))
+        url = ('topicmap?name=%s&topicmap_type_uri=%s' % (tm_name.replace(' ', '%20'), tm_type))
         # payload = json.loads('{}')
         try:
             data = {'tbd': 'tbd'}
@@ -308,10 +309,11 @@ def create_topicmap(tm_name, tm_type='dmx.topicmaps.topicmap'):
             print("ERROR! Could not read Payload. Not JSON?")
             sys.exit(1);
 
+        ## debug
         pretty_print(payload)
 
         #topic_id = write_request(url)["id"]
-        topic_id = write_request(url, payload)["id"]
+        topic_id = write_request(url, payload, workspace)["id"]
         # print("New topicmap '%s' was created with topic_id %s." % (tm_name, topic_id))
         return(topic_id)
 
@@ -616,12 +618,13 @@ def main(args):
             print("ERROR! Missing username or password.")
 
     if argsdict['create_topicmap']:
-	# still missing: set type of new map (default is topicmap)
-        if (argsdict['create_topicmap'] != None):
-            data = create_topicmap(argsdict['create_topicmap'])
+	# still missing: set type of new map via option (default is topicmap)
+        argsdict['m_type'] = 'dmx.topicmaps.topicmap'
+        if (argsdict['create_topicmap'] != None) and (argsdict['workspace'] != None):
+            data = create_topicmap(argsdict['create_topicmap'], argsdict['m_type'], argsdict['workspace'])
             print(data)
         else:
-            print("ERROR! Missing name of new topicmap.")
+            print("ERROR! Missing name of new topicmap or missing workspace name.")
 
     if argsdict['by_type']:
         data = get_items(argsdict['by_type'])
