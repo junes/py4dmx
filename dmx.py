@@ -245,7 +245,12 @@ def write_request(url, payload=None, workspace='DMX', method='POST'):
     if payload:
         if payload == "tbd":
             payload = {}
-        print("Got payload.")
+        print("Got payload: %s" % payload)
+        print("TYPE = %s" % type(payload))
+        ## make sure payload is a dict before we send it
+        if isinstance(payload, str):
+            payload=json.loads(payload)
+            print("Retyped payload to 'dict': %s" % payload)
         try:
             # response = (json.loads(urllib.request.urlopen(req,
             #         (json.dumps(payload)).encode('UTF-8')).read().decode('UTF-8')))
@@ -281,7 +286,11 @@ def create_user(dm_user='testuser', dm_pass='testpass'):
         hash_object = hashlib.sha256(dm_pass.encode('UTF-8'))
         dm_pass = '-SHA256-'+hash_object.hexdigest()
         payload = {'username' : dm_user, 'password' : dm_pass}
+        ## payload = json.dumps({'username' : dm_user, 'password' : dm_pass})
+        # topic_id = write_request(url, payload)["id"]
         topic_id = write_request(url, payload)["id"]
+        ## debug
+        print("TOPIC_ID = %s" % topic_id)
         print("New user '%s' was created with topic_id %s." % (dm_user, topic_id))
         return
 
@@ -676,6 +685,8 @@ def main(args):
 
 if __name__ == '__main__':
     # import sys
+    ## debug
+    print(sys.version_info)
     if (sys.version_info < (3, 0)):
         print('ERROR! This program requires python version 3 or highter.')
         sys.exit(1)
