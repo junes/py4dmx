@@ -255,7 +255,7 @@ def write_request(url, payload=None, workspace='DMX', method='POST'):
             # response = (json.loads(urllib.request.urlopen(req,
             #         (json.dumps(payload)).encode('UTF-8')).read().decode('UTF-8')))
             response = (json.loads(urllib.request.urlopen(req,
-                    (json.dumps(payload)).encode('UTF-8')).read()))
+                    (json.dumps(payload)).encode('UTF-8')).read().decode('UTF-8')))
         except urllib.error.HTTPError as e:
             print('Write Data Error: '+str(e))
         else:
