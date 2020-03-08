@@ -480,6 +480,25 @@ def send_data(payload, workspace='DMX'):
     return(topic_id)
 
 
+def reveal_topic(workspace, map_id, topic_id, x=0, y=0, pinned=False):
+    """
+    This function reveales a topic (id) on a topicmap (id) at
+    position x, y, pinned or unpinned
+    """
+    #
+    ## work in progress
+    #
+    # we need small letters here
+    if pinned:
+        pinned='true'
+    else:
+        pinned='false'
+    url = ('topicmap/%s/topic/%s' % (map_id, topic_id))
+    payload = ('{ "dmx.topicmaps.x": %s, "dmx.topicmaps.y": %s, "dmx.topicmaps.visibility": true, "dmx.topicmaps.pinned": %s }' % (x, y, pinned))
+    topic_id = write_request(url, payload, workspace)
+    print(topic_id)
+
+
 def get_topic(topic_id):
     """
     This function fetches the data according to datapath from
@@ -611,6 +630,7 @@ def main(args):
     parser.add_argument('-b','--by_type', type=str, help='Get all items of a TopicType by its topic.type.uri.', required=False, default=None)
     parser.add_argument('-C','--create_user', help='Create a user with -u username and -p password.', action='store_true', required=False, default=None)
     parser.add_argument('-M','--create_topicmap', type=str, help='Create a new topicmap with given name in a specified workspace with -M map name and -w workspace name.', required=False, default=None)
+    parser.add_argument('-R','--reveal_topic', help='Reveal a topic on a topicmap in a specified workspace with -w workspace name.', action='store_true', required=False, default=None)
     parser.add_argument('-d','--delete_topic', type=int, help='Detele a topic by id.', required=False, default=None)
     parser.add_argument('-f','--file', type=str, help='Creates a new topic from json file in a specified workspace with -f file name and -w workspace name.', required=False, default=None)
     parser.add_argument('-c','--config_properties', type=str, help='Reads config data from dmx config properties file.', required=False, default=None)
@@ -724,6 +744,14 @@ def main(args):
             pretty_print(data)
         else:
             print('no')
+
+    if argsdict['reveal_topic']:
+        print("Work in progress!")
+        workspace="Private Workspace"
+        map_id=3697
+        topic_id=3697
+        data = reveal_topic(workspace, map_id, topic_id, x=0, y=0, pinned=False)
+        print(data)
 
     if len(sys.argv) < 2:
         parser.print_usage()
