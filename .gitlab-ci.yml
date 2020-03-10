@@ -18,3 +18,16 @@ test:
     - ./test_dmx-py.sh
   only:
     - master
+
+
+manual_test:
+  stage: test
+  script:
+    - cp dmx.cfg.example dmx.cfg
+    - echo "change config file"
+    - sed -i "s/^server\ \=\ localhost/server\ \=\ ${TESTHOST}/g" dmx.cfg
+    - ./test_dmx-py.sh
+  only:
+    - master
+  when:
+    - manual
