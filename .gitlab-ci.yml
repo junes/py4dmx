@@ -8,14 +8,13 @@ deploy:
     - echo "create config file"
     - cp dmx.cfg.example dmx.cfg
     - echo "change config file"
-    - sed -i "s/^server\ \=\ localhost/^server\ \=\ ${TESTHOST}/g" dmx.cfg
-    - cat dmx.cfg
+    - sed -i "s/^server\ \=\ localhost/server\ \=\ ${TESTHOST}/g" dmx.cfg
   only:
     - master
   
 test:
   stage: test
   script:
-    - echo "test"
+    - test_dmx-py.sh
   only:
     - master
