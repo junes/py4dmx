@@ -303,6 +303,21 @@ def write_request(url, payload=None, workspace='DMX', method='POST', expect_json
             if verbose:
                 print(type(response))
             return("OK")
+    elif expect_json:
+        if verbose:
+            print('Expecting JSON response with no payload')
+        try:
+            # response = (json.loads(urllib.request.urlopen(req,
+            #         (json.dumps(payload)).encode('UTF-8')).read().decode('UTF-8')))
+            response = (json.loads(urllib.request.urlopen(req).encode('UTF-8')).read().decode('UTF-8')))
+        except urllib.error.HTTPError as e:
+            print('Write Data Error: '+str(e))
+        except json.decoder.JSONDecodeError as e:
+            print('JSON Decoder Error: '+str(e))
+        else:
+            if verbose:
+                print(type(response))
+            return("OK")
     else:
         # if no payload
         if verbose:
