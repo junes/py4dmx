@@ -42,8 +42,9 @@ import hashlib
 import argparse
 
 ## define global variables
-config = []     # The data required to access and login to dmx
-verbose = False # verbose mode (True|False)
+config = []       # The data required to access and login to dmx
+verbose = False   # verbose mode (True|False)
+jsessionid = ""   # The session ID
 
 def read_config_file():
     """
@@ -182,23 +183,25 @@ def get_session_id():
     """
     Creates an initial session and returns the session id.
     """
-    server = config.get('Connection', 'server')
-    port = config.get('Connection', 'port')
-    url = 'http://%s:%s/core/topic/0' % (server, port)
-    req = urllib.request.Request(url)
-    req.add_header("Authorization", "Basic %s" % get_base64())
-    req.add_header("Content-Type", "application/json")
-    cj = http.cookiejar.CookieJar()
-    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj))
-    try:
-        test_url = opener.open(req)
-    except urllib.request.HTTPError as e:
-        print('Get Session ID Error: '+str(e))
-    else:
-        for c in cj:
-            if c.name == "JSESSIONID":
-                jsessionid = c.value
-        return(jsessionid)
+    global jsessionid
+    if not jsessionid:
+        server = config.get('Connection', 'server')
+        port = config.get('Connection', 'port')
+        url = 'http://%s:%s/core/topic/0' % (server, port)
+        req = urllib.request.Request(url)
+        req.add_header("Authorization", "Basic %s" % get_base64())
+        req.add_header("Content-Type", "application/json")
+        cj = http.cookiejar.CookieJar()
+        opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj))
+        try:
+            test_url = opener.open(req)
+        except urllib.request.HTTPError as e:
+            print('Get Session ID Error: '+str(e))
+        else:
+            for c in cj:
+                if c.name == "JSESSIONID":
+                    jsessionid = c.value
+    return(jsessionid)
 
 
 def read_request(url):
@@ -230,7 +233,26 @@ def read_request(url):
         return(response)
 
 
-def write_request(url, payload=None, workspace='DMX', method='POST'):
+def check_payload(payload):
+    """
+    This function checks the payload to be send to server
+    """
+    if payload == {"tbd": "tbd"}:
+        ## This needs fixing. It is a workarround to recevie empty JSON as
+        ## required in 'create_topicmap' function.
+        payload = {}
+    if verbose:
+        print("Got payload: %s" % payload)
+        print("PAYLOAD TYPE = %s" % type(payload))
+    ## make sure payload is a dict before we send it
+    if isinstance(payload, str):
+        payload=json.loads(payload)
+        if verbose:
+            print("Retyped payload to 'dict': %s" % payload)
+    return(payload)
+
+
+def write_request(url, payload=None, workspace='DMX', method='POST', expect_json=True):
     """
     Writes the data to a given URL.
     """
@@ -247,27 +269,42 @@ def write_request(url, payload=None, workspace='DMX', method='POST'):
     req.add_header("Cookie", "JSESSIONID=%s; dmx_workspace_id=%s" % (jsessionid, wsid))
     req.add_header("Content-Type", "application/json")
     req.get_method = lambda: method
-    if payload:
-        if payload == "tbd":
-            payload = {}
+    if payload and expect_json:
         if verbose:
-            print("Got payload: %s" % payload)
-            print("PAYLOAD TYPE = %s" % type(payload))
-        ## make sure payload is a dict before we send it
-        if isinstance(payload, str):
-            payload=json.loads(payload)
-            if verbose:
-                print("Retyped payload to 'dict': %s" % payload)
+            print('Expecting JSON response')
+        payload=check_payload(payload)
         try:
             # response = (json.loads(urllib.request.urlopen(req,
             #         (json.dumps(payload)).encode('UTF-8')).read().decode('UTF-8')))
             response = (json.loads(urllib.request.urlopen(req,
-                    (json.dumps(payload)).encode('UTF-8')).read().decode('UTF-8')))
+                        (json.dumps(payload)).encode('UTF-8')).read().decode('UTF-8')))
         except urllib.error.HTTPError as e:
             print('Write Data Error: '+str(e))
+        except json.decoder.JSONDecodeError as e:
+            print('JSON Decoder Error: '+str(e))
         else:
+            if verbose:
+                print(type(response))
             return(response)
+    elif payload:
+        if verbose:
+            print('Expecting no JSON response')
+        payload=check_payload(payload)
+        try:
+            # response = (json.loads(urllib.request.urlopen(req,
+            #         (json.dumps(payload)).encode('UTF-8')).read().decode('UTF-8')))
+            response = (urllib.request.urlopen(req,
+                        (json.dumps(payload)).encode('UTF-8')).read())
+        except urllib.error.HTTPError as e:
+            print('Write Data Error: '+str(e))
+        except json.decoder.JSONDecodeError as e:
+            print('JSON Decoder Error: '+str(e))
+        else:
+            if verbose:
+                print(type(response))
+            return("OK")
     else:
+        # if no payload
         if verbose:
             print("Got no payload.")
         try:
@@ -290,7 +327,7 @@ def write_request(url, payload=None, workspace='DMX', method='POST'):
                 if verbose:
                     print("RESPONSE is JSON")
                 return(response)
-            
+
 
 def create_user(dm_user='testuser', dm_pass='testpass'):
     """
@@ -417,10 +454,10 @@ def get_ws_id(workspace):
     # find the workspace_name in the result
     topics = read_request(url)["topics"]
     for topic in topics:
-	# find the workspace_name in the result
+    # find the workspace_name in the result
         if topic['typeUri'] == 'dmx.workspaces.workspace_name':
-    	    wsnameid = (topic['id'])
-    	    break
+            wsnameid = (topic['id'])
+            break
     if verbose:
         print("WS NAME ID = %s" % wsnameid)
     url = ('core/topic/%s/related_topics'
@@ -472,7 +509,7 @@ def send_data(payload, workspace='DMX'):
     the workspace name on the server.
     """
     if verbose:
-        print("VERBOSE: %s" % verbose) 
+        print("VERBOSE: %s" % verbose)
         print("SEND_DATA: sending data to workspace '%s'" % workspace)
     url = 'core/topic/'
     # topic_id = write_request(url, payload, workspace)["topic"]["id"]
@@ -488,16 +525,15 @@ def reveal_topic(workspace, map_id, topic_id, x=0, y=0, pinned=False):
     #
     ## work in progress
     #
-    # we need small letters here
+    # ~ # Do we need small letters here?
     if pinned:
-        pinned='true'
+        pinned=str('true')
     else:
-        pinned='false'
+        pinned=str('false')
     url = ('topicmap/%s/topic/%s' % (map_id, topic_id))
-    payload = ('{ "dmx.topicmaps.x": %s, "dmx.topicmaps.y": %s, "dmx.topicmaps.visibility": true, "dmx.topicmaps.pinned": %s }' % (x, y, pinned))
-    topic_id = write_request(url, payload, workspace)
-    print(topic_id)
-
+    payload = json.loads('{ "dmx.topicmaps.x": %s, "dmx.topicmaps.y": %s, "dmx.topicmaps.visibility": true, "dmx.topicmaps.pinned": %s }' % (x, y, pinned))
+    response = write_request(url, payload, workspace, expect_json=False)
+    return(response)
 
 def get_topic(topic_id):
     """
@@ -518,7 +554,7 @@ def get_data(datapath):
 
 
 def get_items(topictype):
-    """ 
+    """
     This function searches for topics of the specified topictype and
     returns the items, if exists
     """
@@ -634,6 +670,8 @@ def main(args):
     parser.add_argument('-d','--delete_topic', type=int, help='Detele a topic by id.', required=False, default=None)
     parser.add_argument('-f','--file', type=str, help='Creates a new topic from json file in a specified workspace with -f file name and -w workspace name.', required=False, default=None)
     parser.add_argument('-c','--config_properties', type=str, help='Reads config data from dmx config properties file.', required=False, default=None)
+    parser.add_argument('-i','--topic_id', type=str, help='Provide a numerical topic id.', required=False, default=None)
+    parser.add_argument('-o','--topicmap_id', type=str, help='Provide a numerical topicmap id.', required=False, default=None)
     parser.add_argument('-l','--login', help='Login as -u user with password -p instead of admin.', action='store_true', required=False, default=None)
     parser.add_argument('-m','--membership', help='Create a new workspace membership with -w workspace name and -n username of new member.', action='store_true', required=False, default=None)
     parser.add_argument('-n','--new_member', type=str, help='Provide the username of new member.', required=False, default=None)
@@ -643,7 +681,11 @@ def main(args):
     parser.add_argument('-t','--get_topic', type=int, help='Get all data of a topic id.', required=False, default=None)
     parser.add_argument('-u','--user', type=str, help='Provide a username.', required=False, default=None)
     parser.add_argument('-w','--workspace', type=str, help='Create a new workspace by name with -T type or just the name of a workspace.', required=False, default=None)
-    parser.add_argument('-T','--ws_type', type=str, help='Define Type of the new workspace.', required=False, default=None)
+    parser.add_argument('-T','--ws_type', type=str, help='DEPRICATED! Use -S instead. (Define Type of the new workspace.)', required=False, default=None)
+    parser.add_argument('-S','--ws_sharing_mode', type=str, help='Set the sharing mode of the new workspace.', required=False, default=None)
+    parser.add_argument('-x','--topicmap_x', type=str, help='Provide a numerical x position for topic on topicmap.', required=False, default=None)
+    parser.add_argument('-y','--topicmap_y', type=str, help='Provide a numerical y position f topic on topicmap.', required=False, default=None)
+    parser.add_argument('-P','--topicmap_pinned', type=str, help='Provide a boolen (True|False) if topic should be pinned on topicmap. (default: False)', required=False, default=None)
     args = parser.parse_args()
     argsdict = vars(args)
 
@@ -693,7 +735,7 @@ def main(args):
             print("ERROR! Missing username or password.")
 
     if argsdict['create_topicmap']:
-	# still missing: set type of new map via option (default is topicmap)
+    # still missing: set type of new map via option (default is topicmap)
         argsdict['m_type'] = 'dmx.topicmaps.topicmap'
         if (argsdict['create_topicmap'] != None) and (argsdict['workspace'] != None):
             data = create_topicmap(argsdict['create_topicmap'], argsdict['m_type'], argsdict['workspace'])
@@ -746,12 +788,26 @@ def main(args):
             print('no')
 
     if argsdict['reveal_topic']:
-        print("Work in progress!")
-        workspace="Private Workspace"
-        map_id=3697
-        topic_id=3697
-        data = reveal_topic(workspace, map_id, topic_id, x=0, y=0, pinned=False)
-        print(data)
+        if (argsdict['workspace'] != None)  and (argsdict['topic_id'] != None) and (argsdict['topicmap_id'] != None):
+            workspace=argsdict['workspace']
+            topicmap_id=argsdict['topicmap_id']
+            topic_id=argsdict['topic_id']
+            if (argsdict['topicmap_x']):
+                topicmap_x = argsdict['topicmap_x']
+            else:
+                topicmap_x = 20
+            if (argsdict['topicmap_y']):
+                topicmap_y = argsdict['topicmap_y']
+            else:
+                topicmap_y = 20
+            if (argsdict['topicmap_pinned'] == "True"):
+                topicmap_pinned = argsdict['topicmap_pinned']
+            else:
+                topicmap_pinned = False
+            data = reveal_topic(workspace, topicmap_id, topic_id, topicmap_x, topicmap_y, topicmap_pinned)
+            print(data)
+        else:
+            print("ERROR! Missing topic_id or missing topicmap_id or missing workspace name.")
 
     if len(sys.argv) < 2:
         parser.print_usage()
