@@ -484,7 +484,7 @@ def create_ws(workspace, ws_type):
     uri = workspace.lower()+'.uri'
     url = ('workspace?name=%s&uri=%s&sharing_mode_uri=dmx.workspaces.%s' %
             (workspace.replace(' ', '%20'), uri.replace(' ', '%20'), ws_type))
-    topic_id = write_request(url)["id"]
+    topic_id = write_request(url, expect_json=True)["id"]
     return(topic_id)
 
 
