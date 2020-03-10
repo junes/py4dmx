@@ -5,5 +5,4 @@ password =
 [Connection]
 server = localhost
 port = 8080
-workspace = DeepaMehta
-
+workspace = DMX
