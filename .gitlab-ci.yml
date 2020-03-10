@@ -15,6 +15,6 @@ deploy:
 test:
   stage: test
   script:
-    - test_dmx-py.sh
+    - ./test_dmx-py.sh
   only:
     - master
