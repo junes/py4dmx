@@ -9,8 +9,12 @@ deploy:
     - cp dmx.cfg.example dmx.cfg
     - echo "change config file"
     - cat dmx.cfg
+  only:
+    - master
   
 test:
   stage: test
   script:
     - echo "test"
+  only:
+    - master
