@@ -8,6 +8,7 @@ deploy:
     - echo "create config file"
     - cp dmx.cfg.example dmx.cfg
     - echo "change config file"
+    - sed -i "s/^server\ \=\ localhost/^server\ \=\ ${TESTHOST}" dmx.cfg
     - cat dmx.cfg
   only:
     - master
