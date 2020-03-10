@@ -1,0 +1,7 @@
+before_script:
+  - echo "create config file"
+  - cp dmx.cfg.example dmx.cfg
+  - echo "change config file"
+  - cat dmx.cfg
+  
+ 
