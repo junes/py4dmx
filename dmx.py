@@ -516,7 +516,7 @@ def create_member(workspace='DMX', dm_user='testuser'):
     url = ('accesscontrol/user/%s/workspace/%s' %
             (dm_user, wsid))
     # topic_id = write_request(url)
-    write_request(url)
+    write_request(url, expect_json=False)
     return("OK")
 
 
