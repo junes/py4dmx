@@ -102,8 +102,8 @@ echo -e "\nRun Tests:"
 create_user
 user_login
 create_workspace
-create_member
-create_note
-create_person
-create_topicmap
-reveal_topic
+#create_member
+#create_note
+#create_person
+#create_topicmap
+#reveal_topic

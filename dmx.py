@@ -288,7 +288,7 @@ def write_request(url, payload=None, workspace='DMX', method='POST', expect_json
             return(response)
     elif payload:
         if verbose:
-            print('Expecting no JSON response')
+            print('Expecting no JSON response with payload')
         payload=check_payload(payload)
         try:
             # response = (json.loads(urllib.request.urlopen(req,
@@ -313,9 +313,10 @@ def write_request(url, payload=None, workspace='DMX', method='POST', expect_json
         except json.decoder.JSONDecodeError as e:
             print('JSON Decoder Error: '+str(e))
         else:
+            response = json.loads(json.dumps(response))
             if verbose:
                 print(type(response))
-            return("OK")
+            return(response)
     else:
         # if no payload
         if verbose:
@@ -499,8 +500,8 @@ def create_ws(workspace, ws_type):
     uri = workspace.lower()+'.uri'
     url = ('workspace?name=%s&uri=%s&sharing_mode_uri=dmx.workspaces.%s' %
             (workspace.replace(' ', '%20'), uri.replace(' ', '%20'), ws_type))
-    # ~ topic_id = write_request(url, expect_json=True)["id"]
-    topic_id = write_request(url, expect_json=False)["id"]
+    topic_id = write_request(url, expect_json=True)["id"]
+    # ~ response = write_request(url, expect_json=True)
     return(topic_id)
 
 
