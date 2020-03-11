@@ -20,6 +20,8 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 
+from __future__ import print_function
+
 __author__ = 'Juergen Neumann <juergen@dmx.systems>'
 __copyright__ = 'Copyright 2019, DMX Systems <https://dmx.systems>'
 __license__ = 'GPL'
@@ -35,16 +37,20 @@ jpn - 20170231
 
 """
 
-import os, sys, json
-import urllib.request, urllib.parse, urllib.error, http.cookiejar, base64
+import os
+import sys
+import json
+import base64
 import configparser
 import hashlib
 import argparse
+import urllib.request, urllib.parse, urllib.error, http.cookiejar
 
 ## define global variables
 config = []       # The data required to access and login to dmx
 verbose = False   # verbose mode (True|False)
 jsessionid = ""   # The session ID
+
 
 def read_config_file():
     """
@@ -63,7 +69,7 @@ def read_config_file():
 
     script_dir = os.path.dirname(__file__) #<-- absolute dir the script is in
     config_file_name = 'dmx.cfg'
-    config_file=os.path.join(script_dir, config_file_name)
+    config_file = os.path.join(script_dir, config_file_name)
     ## if empty or missing, use these parameters
     config = configparser.SafeConfigParser()
     # config.read(DEFAULT_CONFIG)
@@ -80,9 +86,10 @@ def read_dmx_config(config_properties):
     and overwrites the config settings with new values.
     """
     global config
-    config = ConfigParser.SafeConfigParser()
-    dmx_params={}
-    dmx_config_file=str(config_properties)
+    # ~ config = ConfigParser.SafeConfigParser()
+    config = configparser.SafeConfigParser()
+    dmx_params = {}
+    dmx_config_file = str(config_properties)
     if os.access(dmx_config_file, os.R_OK):
         with open(dmx_config_file) as f_in:
             lines = [_f for _f in (line.rstrip() for line in f_in) if _f]
@@ -95,8 +102,8 @@ def read_dmx_config(config_properties):
             else:
                 dmx_params[key.lower()] = val
 
-    port=dmx_params['org.osgi.service.http.port']
-    password=dmx_params['dmx.security.initial_admin_password']
+    port = dmx_params['org.osgi.service.http.port']
+    password = dmx_params['dmx.security.initial_admin_password']
     config.add_section('Credentials')
     config.set('Credentials', 'authname', 'admin') # usualy the admin user
     config.set('Credentials', 'password', password) # usualy the admin password
@@ -109,6 +116,8 @@ def read_dmx_config(config_properties):
         if mandatory not in list(dmx_params.keys()):
             print("ERROR! Could not read config file %s." % dmx_config_file)
             sys.exit(0)
+
+    return
 
 
 def check_payload(payload):
@@ -125,7 +134,7 @@ def check_payload(payload):
         payload = json.loads(json.dumps(payload, indent=3, sort_keys=True))
     except:
         print("ERROR! Could not read Payload. Not JSON?")
-        sys.exit(1);
+        sys.exit(1)
     else:
         if verbose:
             print("LenPayload: %s" % len(payload))
@@ -250,8 +259,8 @@ def read_request(url):
             return(response)
     else:
         if verbose:
-                print("RESPONSE TYPE = %s" % type(response))
-                pretty_print(response)
+            print("RESPONSE TYPE = %s" % type(response))
+            pretty_print(response)
         return(response)
 
 
@@ -273,7 +282,7 @@ def write_request(url, payload=None, workspace='DMX', method='POST', expect_json
     req.add_header("Content-Type", "application/json")
     req.get_method = lambda: method
     if payload:
-        payload=check_payload(payload)
+        payload = check_payload(payload)
     if payload and expect_json:
         if verbose:
             print('Sending with payload. Expecting JSON response.')
@@ -282,8 +291,11 @@ def write_request(url, payload=None, workspace='DMX', method='POST', expect_json
             ## required in 'create_topicmap' function.
             payload = {}
         try:
-            response = (json.loads(urllib.request.urlopen(req,
-              (json.dumps(payload)).encode('UTF-8')).read().decode('UTF-8')))
+            response = (
+                json.loads(urllib.request.urlopen(
+                    req, (json.dumps(payload)).encode('UTF-8')
+                ).read().decode('UTF-8'))
+            )
         except urllib.error.HTTPError as e:
             print('Write Data Error: '+str(e))
         except json.decoder.JSONDecodeError as e:
@@ -301,8 +313,11 @@ def write_request(url, payload=None, workspace='DMX', method='POST', expect_json
             ## required in 'create_topicmap' function.
             payload = {}
         try:
-            response = (urllib.request.urlopen(req,
-              (json.dumps(payload)).encode('UTF-8')).read().decode('UTF-8'))
+            response = (
+                urllib.request.urlopen(
+                    req, (json.dumps(payload)).encode('UTF-8')
+                ).read().decode('UTF-8')
+            )
             # ~ response = (urllib.request.urlopen(req, payload).read())
         except urllib.error.HTTPError as e:
             print('Write Data Error: '+str(e))
@@ -408,7 +423,7 @@ def create_topicmap(tm_name, tm_type='dmx.topicmaps.topicmap', workspace='DMX'):
                 print("LenPayload: %s" % len(payload))
         except:
             print("ERROR! Could not read Payload. Not JSON?")
-            sys.exit(1);
+            sys.exit(1)
 
         ## debug
         if verbose:
@@ -427,8 +442,9 @@ def change_password(dm_user, dm_old_pass, dm_new_pass):
     ###
     ### Needs testing and might need adopting to DMX
     ###
-    base64string = base64.encodestring("%s:%s" %
-                    (dm_user, dm_old_pass)).replace("\n", "")
+    base64string = base64.encodestring(
+        "%s:%s" % (dm_user, dm_old_pass)
+    ).replace("\n", "")
 
     # get id of user_account (not user_name!)
     url = 'core/topic/by_type/dmx.accesscontrol.user_account?children=false'
@@ -444,7 +460,7 @@ def change_password(dm_user, dm_old_pass, dm_new_pass):
            'others_topic_type_uri=dmx.workspaces.workspace' % str(wsnameid)
           )
     wsid = read_request(url)
-    print("Change Password WS ID = %s" % response)
+    print("Change Password WS ID = %s" % wsid)
 
     # change password
     server = config.get('Connection', 'server')
@@ -464,8 +480,13 @@ def change_password(dm_user, dm_old_pass, dm_new_pass):
         }
     }
     try:
-        response = (json.loads(urllib.request.urlopen(req,
-                    (json.dumps(payload))).read()))
+        response = (
+            json.loads(
+                urllib.request.urlopen(
+                    req, (json.dumps(payload))
+                ).read()
+            )
+        )
     except urllib.error.HTTPError as e:
         print('Change Password Error: '+str(e))
     else:
@@ -479,7 +500,8 @@ def get_ws_id(workspace):
     """
     if verbose:
         print("GET_WS_ID: Searching Workspace ID for %s" % workspace)
-    url = ('core/topic?type_uri=dmx.workspaces.workspace_name&query="%s"' % workspace.replace(' ', '%20'))
+    url = ('core/topic?type_uri=dmx.workspaces.workspace_name'
+           '&query="%s"' % workspace.replace(' ', '%20'))
     # find the workspace_name in the result
     topics = read_request(url)["topics"]
     for topic in topics:
@@ -509,7 +531,7 @@ def create_ws(workspace, ws_type, uri=''):
     if not uri:
         uri = workspace.lower()+'.uri'
     url = ('workspace?name=%s&uri=%s&sharing_mode_uri=dmx.workspaces.%s' %
-            (workspace.replace(' ', '%20'), uri.replace(' ', '%20'), ws_type))
+           (workspace.replace(' ', '%20'), uri.replace(' ', '%20'), ws_type))
     topic_id = write_request(url, expect_json=True)["id"]
     # ~ response = write_request(url, expect_json=True)
     return(topic_id)
@@ -524,7 +546,7 @@ def create_member(workspace='DMX', dm_user='testuser'):
         print("Creating Workspace membership for user %s in %s" % (dm_user, workspace))
     wsid = get_ws_id(workspace)
     url = ('accesscontrol/user/%s/workspace/%s' %
-            (dm_user, wsid))
+           (dm_user, wsid))
     # topic_id = write_request(url)
     write_request(url, expect_json=False)
     return("OK")
@@ -550,11 +572,15 @@ def reveal_topic(workspace, map_id, topic_id, x=0, y=0, pinned=False):
     position x, y, pinned or unpinned
     """
     if pinned:
-        pinned=str('true')
+        pinned = str('true')
     else:
-        pinned=str('false')
+        pinned = str('false')
     url = ('topicmap/%s/topic/%s' % (map_id, topic_id))
-    payload = json.loads('{ "dmx.topicmaps.x": %s, "dmx.topicmaps.y": %s, "dmx.topicmaps.visibility": true, "dmx.topicmaps.pinned": %s }' % (x, y, pinned))
+    payload = json.loads(
+        '{ "dmx.topicmaps.x": %s, "dmx.topicmaps.y": %s, \
+        "dmx.topicmaps.visibility": true, "dmx.topicmaps.pinned": %s }'
+        % (x, y, pinned)
+    )
     response = write_request(url, payload, workspace, expect_json=False)
     return(response)
 
@@ -653,7 +679,7 @@ def delete_topic(topic_id):
     port = config.get('Connection', 'port')
     jsessionid = get_session_id()
     url = ('http://%s:%s/core/topic/%s' %
-            (server, port, topic_id))
+           (server, port, topic_id))
     req = urllib.request.Request(url)
     req.add_header("Cookie", "JSESSIONID=%s" % jsessionid)
     req.add_header("Content-Type", "application/json")
@@ -681,34 +707,186 @@ def main(args):
     # change_password(user, password, 'new_pass')
     """
     global verbose # set verboe mode
-    parser = argparse.ArgumentParser(description = 'This is a Python script \
-             for DMX by Juergen Neumann <juergen@dmx.systems>. It is free \
-             software licensed under the GNU General Public License Version 3 \
-             and comes with ABSOLUTELY NO WARRANTY.')
-    parser.add_argument('-v','--verbose', help='Enable verbose mode.', action='store_true', required=False, default=None)
-    parser.add_argument('-b','--by_type', type=str, help='Get all items of a TopicType by its topic.type.uri.', required=False, default=None)
-    parser.add_argument('-C','--create_user', help='Create a user with -u username and -p password.', action='store_true', required=False, default=None)
-    parser.add_argument('-M','--create_topicmap', type=str, help='Create a new topicmap with given name in a specified workspace with -M map name and -w workspace name.', required=False, default=None)
-    parser.add_argument('-R','--reveal_topic', help='Reveal a topic on a topicmap in a specified workspace with -w workspace name.', action='store_true', required=False, default=None)
-    parser.add_argument('-d','--delete_topic', type=int, help='Detele a topic by id.', required=False, default=None)
-    parser.add_argument('-f','--file', type=str, help='Creates a new topic from json file in a specified workspace with -f file name and -w workspace name.', required=False, default=None)
-    parser.add_argument('-c','--config_properties', type=str, help='Reads config data from dmx config properties file.', required=False, default=None)
-    parser.add_argument('-i','--topic_id', type=str, help='Provide a numerical topic id.', required=False, default=None)
-    parser.add_argument('-o','--topicmap_id', type=str, help='Provide a numerical topicmap id.', required=False, default=None)
-    parser.add_argument('-l','--login', help='Login as -u user with password -p instead of admin.', action='store_true', required=False, default=None)
-    parser.add_argument('-m','--membership', help='Create a new workspace membership with -w workspace name and -n username of new member.', action='store_true', required=False, default=None)
-    parser.add_argument('-n','--new_member', type=str, help='Provide the username of new member.', required=False, default=None)
-    parser.add_argument('-p','--password', type=str, help='Provide a password.', required=False, default=None)
-    parser.add_argument('-r','--get_related', type=int, help='Get all related items of a topic id.', required=False, default=None)
-    parser.add_argument('-s','--get_session_id', help='Get a valid session id.', action='store_true', required=False, default=None)
-    parser.add_argument('-t','--get_topic', type=int, help='Get all data of a topic id.', required=False, default=None)
-    parser.add_argument('-u','--user', type=str, help='Provide a username.', required=False, default=None)
-    parser.add_argument('-w','--workspace', type=str, help='Create a new workspace by name with -T type or just the name of a workspace.', required=False, default=None)
-    parser.add_argument('-T','--ws_type', type=str, help='DEPRICATED! Use -S instead. (Define Type of the new workspace.)', required=False, default=None)
-    parser.add_argument('-S','--ws_sharing_mode', type=str, help='Set the sharing mode of the new workspace.', required=False, default=None)
-    parser.add_argument('-x','--topicmap_x', type=str, help='Provide a numerical x position for topic on topicmap.', required=False, default=None)
-    parser.add_argument('-y','--topicmap_y', type=str, help='Provide a numerical y position f topic on topicmap.', required=False, default=None)
-    parser.add_argument('-P','--topicmap_pinned', type=str, help='Provide a boolen (True|False) if topic should be pinned on topicmap. (default: False)', required=False, default=None)
+    parser = argparse.ArgumentParser(
+        description='This is a Python script \
+        for DMX by Juergen Neumann <juergen@dmx.systems>. It is free \
+        software licensed under the GNU General Public License Version 3 \
+        and comes with ABSOLUTELY NO WARRANTY.'
+    )
+    parser.add_argument(
+        '-v', '--verbose',
+        help='Enable verbose mode.',
+        action='store_true',
+        required=False,
+        default=None
+    )
+    parser.add_argument(
+        '-b', '--by_type',
+        type=str,
+        help='Get all items of a TopicType by its topic.type.uri.',
+        required=False,
+        default=None
+    )
+    parser.add_argument(
+        '-C', '--create_user',
+        help='Create a user with -u username and -p password.',
+        action='store_true',
+        required=False,
+        default=None
+    )
+    parser.add_argument(
+        '-M', '--create_topicmap',
+        type=str,
+        help='Create a new topicmap with given name in a specified workspace \
+              with -M map name and -w workspace name.',
+        required=False,
+        default=None
+    )
+    parser.add_argument(
+        '-R', '--reveal_topic',
+        help='Reveal a topic on a topicmap in a specified workspace \
+              with -w workspace name.',
+        action='store_true',
+        required=False,
+        default=None
+    )
+    parser.add_argument(
+        '-d', '--delete_topic',
+        type=int,
+        help='Detele a topic by id.',
+        required=False,
+        default=None
+    )
+    parser.add_argument(
+        '-f', '--file',
+        type=str,
+        help='Creates a new topic from json file in a specified workspace  \
+              with -f file name and -w workspace name.',
+        required=False,
+        default=None
+    )
+    parser.add_argument(
+        '-c', '--config_properties',
+        type=str,
+        help='Reads config data from dmx config properties file.',
+        required=False,
+        default=None
+    )
+    parser.add_argument(
+        '-i', '--topic_id',
+        type=str,
+        help='Provide a numerical topic id.',
+        required=False,
+        default=None
+    )
+    parser.add_argument(
+        '-o', '--topicmap_id',
+        type=str,
+        help='Provide a numerical topicmap id.',
+        required=False,
+        default=None
+    )
+    parser.add_argument(
+        '-l', '--login',
+        help='Login as -u user with password -p instead of admin.',
+        action='store_true',
+        required=False,
+        default=None
+    )
+    parser.add_argument(
+        '-m', '--membership',
+        help='Create a new workspace membership with -w workspace name \
+              and -n username of new member.',
+        action='store_true',
+        required=False,
+        default=None
+    )
+    parser.add_argument(
+        '-n', '--new_member',
+        type=str,
+        help='Provide the username of new member.',
+        required=False,
+        default=None
+    )
+    parser.add_argument(
+        '-p', '--password',
+        type=str,
+        help='Provide a password.',
+        required=False,
+        default=None
+    )
+    parser.add_argument(
+        '-r', '--get_related',
+        type=int,
+        help='Get all related items of a topic id.',
+        required=False,
+        default=None
+    )
+    parser.add_argument(
+        '-s', '--get_session_id',
+        help='Get a valid session id.',
+        action='store_true',
+        required=False,
+        default=None
+    )
+    parser.add_argument(
+        '-t', '--get_topic',
+        type=int,
+        help='Get all data of a topic id.',
+        required=False,
+        default=None
+    )
+    parser.add_argument(
+        '-u', '--user',
+        type=str,
+        help='Provide a username.',
+        required=False,
+        default=None
+    )
+    parser.add_argument(
+        '-w', '--workspace',
+        type=str,
+        help='Create a new workspace by name with -T type or just the \
+              name of a workspace.',
+        required=False,
+        default=None
+    )
+    parser.add_argument(
+        '-T', '--ws_type',
+        type=str,
+        help='DEPRICATED! Use -S instead. (Define Type of the new workspace.)',
+        required=False,
+        default=None
+    )
+    parser.add_argument(
+        '-S', '--ws_sharing_mode',
+        type=str,
+        help='Set the sharing mode of the new workspace.',
+        required=False,
+        default=None
+    )
+    parser.add_argument(
+        '-x', '--topicmap_x',
+        type=str,
+        help='Provide a numerical x position for topic on topicmap.',
+        required=False,
+        default=None
+    )
+    parser.add_argument(
+        '-y', '--topicmap_y',
+        type=str,
+        help='Provide a numerical y position f topic on topicmap.',
+        required=False,
+        default=None
+    )
+    parser.add_argument(
+        '-P', '--topicmap_pinned',
+        type=str,
+        help='Provide a boolen (True|False) if topic should be pinned \
+              on topicmap. (default: False)',
+        required=False,
+        default=None
+    )
     args = parser.parse_args()
     argsdict = vars(args)
 
@@ -722,7 +900,8 @@ def main(args):
 
     # instance must be first, cause it overwrites the default setting from config
     if argsdict['config_properties']:
-        data = read_dmx_config(argsdict['config_properties'])
+        # ~ data = read_dmx_config(argsdict['config_properties'])
+        read_dmx_config(argsdict['config_properties'])
     else:
         read_config_file()
 
@@ -761,7 +940,9 @@ def main(args):
     # still missing: set type of new map via option (default is topicmap)
         argsdict['m_type'] = 'dmx.topicmaps.topicmap'
         if (argsdict['create_topicmap'] != None) and (argsdict['workspace'] != None):
-            data = create_topicmap(argsdict['create_topicmap'], argsdict['m_type'], argsdict['workspace'])
+            data = create_topicmap(
+                argsdict['create_topicmap'], argsdict['m_type'], argsdict['workspace']
+            )
             print(data)
         else:
             print("ERROR! Missing name of new topicmap or missing workspace name.")
@@ -782,7 +963,8 @@ def main(args):
         # Does not work with 'private' for now!
         if argsdict['ws_type'] in ["confidential", "collaborative", "public", "common"]:
             if verbose:
-                print("Creating new %s workspace %s" % (argsdict['ws_type'],argsdict['workspace']))
+                print("Creating new %s workspace %s" %
+                      (argsdict['ws_type'], argsdict['workspace']))
             data = create_ws(argsdict['workspace'], argsdict['ws_type'])
             print(data)
         elif argsdict['ws_type'] == "private":
@@ -803,7 +985,8 @@ def main(args):
 
     if argsdict['delete_topic']:
         data = get_topic(argsdict['delete_topic'])
-        if query_yes_no("Are you sure you want to delete topic id %s with value \"%s\"" % (argsdict['delete_topic'], data['value'])):
+        if query_yes_no("Are you sure you want to delete topic id %s with value \"%s\"" %
+                        (argsdict['delete_topic'], data['value'])):
             print('yes')
             data = delete_topic(argsdict['delete_topic'])
             pretty_print(data)
@@ -811,30 +994,41 @@ def main(args):
             print('no')
 
     if argsdict['reveal_topic']:
-        if (argsdict['workspace'] != None)  and (argsdict['topic_id'] != None) and (argsdict['topicmap_id'] != None):
-            workspace=argsdict['workspace']
-            topicmap_id=argsdict['topicmap_id']
-            topic_id=argsdict['topic_id']
-            if (argsdict['topicmap_x']):
+        if (
+                (argsdict['workspace'] != None) and
+                (argsdict['topic_id'] != None) and
+                (argsdict['topicmap_id'] != None)
+            ):
+            workspace = argsdict['workspace']
+            topicmap_id = argsdict['topicmap_id']
+            topic_id = argsdict['topic_id']
+            if argsdict['topicmap_x']:
                 topicmap_x = argsdict['topicmap_x']
             else:
                 topicmap_x = 20
-            if (argsdict['topicmap_y']):
+            if argsdict['topicmap_y']:
                 topicmap_y = argsdict['topicmap_y']
             else:
                 topicmap_y = 20
-            if (argsdict['topicmap_pinned'] == "True"):
+            if argsdict['topicmap_pinned'] == "True":
                 topicmap_pinned = argsdict['topicmap_pinned']
             else:
                 topicmap_pinned = False
-            data = reveal_topic(workspace, topicmap_id, topic_id, topicmap_x, topicmap_y, topicmap_pinned)
+            data = reveal_topic(
+                workspace,
+                topicmap_id,
+                topic_id,
+                topicmap_x,
+                topicmap_y,
+                topicmap_pinned
+            )
             print(data)
         else:
-            print("ERROR! Missing topic_id or missing topicmap_id or missing workspace name.")
-
+            print('ERROR! Missing topic_id or missing topicmap_id \
+                   or missing workspace name.')
     if len(sys.argv) < 2:
         parser.print_usage()
-        print("Use -h or --help for more information.")
+        print('Use -h or --help for more information.')
         parser.exit(1)
 
 
