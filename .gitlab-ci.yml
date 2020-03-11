@@ -12,7 +12,7 @@ deploy:
 test:
   stage: test
   script:
-    - pylint3 dmx.py
+    - pylint3 -E dmx.py
     - cp dmx.cfg.example dmx.cfg
     - echo "change config file"
     - sed -i "s/^server\ \=\ localhost/server\ \=\ ${TESTHOST}/g" dmx.cfg
