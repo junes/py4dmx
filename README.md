@@ -37,8 +37,10 @@ Some examples:
    creates a new note topic with title "foo" and body "bar" in workspace "Private Workspace".
 
  * `dmx.py -M "my topicmap" -w "Private Workspace"`  
-   creates a new topicmap "my topicmap" in workspace "Private Workspace".
+   creates a new topicmap "my topicmap" in workspace "Private Workspace".  
 
+ * `dmy.py -R -i 1234 -o 5678 -x 150 -y 150 -P True -w "Private Workspace"`  
+   reveales a topic with id 1234 on topicmap with id 4567 at position x=150 and y=150 in pinned mode.
 
 
 Copyright (c) 2019 DMX Systems <https://dmx.systems>    
