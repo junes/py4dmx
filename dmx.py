@@ -111,6 +111,34 @@ def read_dmx_config(config_properties):
             sys.exit(0)
 
 
+def check_payload(payload):
+    """
+    This function checks the payload to be send to server and makes sure
+    it is a valid json format.
+    """
+    if verbose:
+        print("CHECK_PAYLOAD: %s" % payload)
+        print("PAYLOAD TYPE = %s" % type(payload))
+    ## make sure payload is a dict before we send it
+    ## Test if the payload is a valid json object and get it sorted.
+    try:
+        payload = json.loads(json.dumps(payload, indent=3, sort_keys=True))
+    except:
+        print("ERROR! Could not read Payload. Not JSON?")
+        sys.exit(1);
+    else:
+        if verbose:
+            print("LenPayload: %s" % len(payload))
+            pretty_print(payload)
+        return(payload)
+
+    # ~ if isinstance(payload, str):
+        # ~ payload=json.loads(payload)
+        # ~ if verbose:
+            # ~ print("Retyped payload to 'dict': %s" % payload)
+    # ~ return(payload)
+
+
 def import_payload(json_filename, default="payload.json"):
     """
     Here we open the file and import the content as json.
@@ -118,20 +146,8 @@ def import_payload(json_filename, default="payload.json"):
     if verbose:
         print("Reading file %s" % (json_filename))
     with open(json_filename, 'r') as data_file:
-        payload_json = json.load(data_file)
-
-    # Test if the payload is a valid json object and get it sorted.
-    try:
-        payload = json.loads(json.dumps(payload_json, indent=3, sort_keys=True))
-        if verbose:
-            print("LenPayload: %s" % len(payload))
-    except:
-        print("ERROR! Could not read Payload. Not JSON?")
-        sys.exit(1);
-    else:
-        if verbose:
-            pretty_print(payload)
-        return(payload)
+        payload = json.load(data_file)
+    return(payload)
 
 
 def query_yes_no(question, default="no"):
@@ -228,28 +244,15 @@ def read_request(url):
         except urllib.error.HTTPError as e:
             print('Read Data Error: '+str(e))
         else:
+            if verbose and response:
+                print("RESPONSE TYPE = %s" % type(response))
+                # ~ print(response)
             return(response)
     else:
-        return(response)
-
-
-def check_payload(payload):
-    """
-    This function checks the payload to be send to server
-    """
-    if payload == {"tbd": "tbd"}:
-        ## This needs fixing. It is a workarround to recevie empty JSON as
-        ## required in 'create_topicmap' function.
-        payload = {}
-    if verbose:
-        print("Got payload: %s" % payload)
-        print("PAYLOAD TYPE = %s" % type(payload))
-    ## make sure payload is a dict before we send it
-    if isinstance(payload, str):
-        payload=json.loads(payload)
         if verbose:
-            print("Retyped payload to 'dict': %s" % payload)
-    return(payload)
+                print("RESPONSE TYPE = %s" % type(response))
+                pretty_print(response)
+        return(response)
 
 
 def write_request(url, payload=None, workspace='DMX', method='POST', expect_json=True):
@@ -269,43 +272,50 @@ def write_request(url, payload=None, workspace='DMX', method='POST', expect_json
     req.add_header("Cookie", "JSESSIONID=%s; dmx_workspace_id=%s" % (jsessionid, wsid))
     req.add_header("Content-Type", "application/json")
     req.get_method = lambda: method
+    if payload:
+        payload=check_payload(payload)
     if payload and expect_json:
         if verbose:
-            print('Expecting JSON response')
-        payload=check_payload(payload)
+            print('Sending with payload. Expecting JSON response.')
+        if payload == {"": ""}:
+            ## This needs fixing. It is a workarround to recevie empty JSON as
+            ## required in 'create_topicmap' function.
+            payload = {}
         try:
-            # response = (json.loads(urllib.request.urlopen(req,
-            #         (json.dumps(payload)).encode('UTF-8')).read().decode('UTF-8')))
             response = (json.loads(urllib.request.urlopen(req,
-                        (json.dumps(payload)).encode('UTF-8')).read().decode('UTF-8')))
+              (json.dumps(payload)).encode('UTF-8')).read().decode('UTF-8')))
         except urllib.error.HTTPError as e:
             print('Write Data Error: '+str(e))
         except json.decoder.JSONDecodeError as e:
             print('JSON Decoder Error: '+str(e))
         else:
             if verbose:
-                print(type(response))
+                print("RESPONSE TYPE = %s" % type(response))
+                pretty_print(response)
             return(response)
     elif payload:
         if verbose:
-            print('Expecting no JSON response with payload')
-        payload=check_payload(payload)
+            print('Sending data with payload. Not expecting JSON response.')
+        if payload == {"": ""}:
+            ## This needs fixing. It is a workarround to recevie empty JSON as
+            ## required in 'create_topicmap' function.
+            payload = {}
         try:
-            # response = (json.loads(urllib.request.urlopen(req,
-            #         (json.dumps(payload)).encode('UTF-8')).read().decode('UTF-8')))
             response = (urllib.request.urlopen(req,
-                        (json.dumps(payload)).encode('UTF-8')).read())
+              (json.dumps(payload)).encode('UTF-8')).read().decode('UTF-8'))
+            # ~ response = (urllib.request.urlopen(req, payload).read())
         except urllib.error.HTTPError as e:
             print('Write Data Error: '+str(e))
         except json.decoder.JSONDecodeError as e:
             print('JSON Decoder Error: '+str(e))
         else:
             if verbose:
-                print(type(response))
+                print("RESPONSE TYPE = %s" % type(response))
+                # ~ print(response)
             return("OK")
     elif expect_json:
         if verbose:
-            print('Expecting JSON response with no payload')
+            print('Sending data without payload. Expecting JSON response.')
         try:
             response = (json.loads(urllib.request.urlopen(req).read().decode('UTF-8')))
         except urllib.error.HTTPError as e:
@@ -315,18 +325,17 @@ def write_request(url, payload=None, workspace='DMX', method='POST', expect_json
         else:
             response = json.loads(json.dumps(response))
             if verbose:
-                print(type(response))
+                print("RESPONSE TYPE = %s" % type(response))
+                pretty_print(response)
             return(response)
     else:
+        # This can be deleted, right?
         # if no payload
         if verbose:
-            print("Got no payload.")
+            print('Got no payload. Got no expectation on response.')
         try:
             ## response = (json.loads(urllib.request.urlopen(req).read()))
-            response = (urllib.request.urlopen(req).read())
-            if verbose:
-                print("GOT RESPONSE: %s" % response)
-                print("RESPONSE TYPE = %s" % type(response))
+            response = (urllib.request.urlopen(req).read().decode('UTF-8'))
         except urllib.error.HTTPError as e:
             print('Write Data Error: '+str(e))
         except json.decoder.JSONDecodeError as e:
@@ -338,10 +347,14 @@ def write_request(url, payload=None, workspace='DMX', method='POST', expect_json
             except:
                 if verbose:
                     print("RESPONSE is not JSON")
+                    print("RESPONSE TYPE = %s" % type(response))
+                    # ~ print(response)
                 return("OK")
             else:
                 if verbose:
                     print("RESPONSE is JSON")
+                    print("RESPONSE TYPE = %s" % type(response))
+                    pretty_print(response)
                 return(response)
 
 
@@ -352,7 +365,7 @@ def create_user(dm_user='testuser', dm_pass='testpass'):
     # check if username exits
     users = list(get_items('dmx.accesscontrol.username').values())
     if verbose:
-        print(users)
+        print("USERS: %s" % users)
     if dm_user in users:
         print("ERROR! User '%s' exists." % dm_user)
         sys.exit(1)
@@ -379,17 +392,17 @@ def create_topicmap(tm_name, tm_type='dmx.topicmaps.topicmap', workspace='DMX'):
     # check if topicmap exits (globally!!!)
     maps = list(get_items('dmx.topicmaps.topicmap').values())
     if verbose:
-        print(tm_name)
-        print(maps)
+        print("CREATE TOPICMAP: %s" % tm_name)
+        print("TOPICMAPS: %s" % maps)
     if tm_name in maps:
         print("ERROR! Map '%s' exists." % tm_name)
         sys.exit(1)
     else:
         # url = ('topicmap?name="%s"&topicmap_type_uri="%s"&private=false' % (tm_name.replace(' ', '%20'), tm_type))
         url = ('topicmap?name=%s&topicmap_type_uri=%s' % (tm_name.replace(' ', '%20'), tm_type))
-        # payload = json.loads('{}')
+        # for the moment, this requires an empty json string exactly like this
+        data = {"": ""}
         try:
-            data = {'tbd': 'tbd'}
             payload = json.loads(json.dumps(data, indent=3, sort_keys=True))
             if verbose:
                 print("LenPayload: %s" % len(payload))
@@ -470,7 +483,7 @@ def get_ws_id(workspace):
     # find the workspace_name in the result
     topics = read_request(url)["topics"]
     for topic in topics:
-    # find the workspace_name in the result
+        # find the workspace_name in the result
         if topic['typeUri'] == 'dmx.workspaces.workspace_name':
             wsnameid = (topic['id'])
             break
@@ -487,17 +500,14 @@ def get_ws_id(workspace):
     return(topic_id)
 
 
-def create_ws(workspace, ws_type):
+def create_ws(workspace, ws_type, uri=''):
     """
     This function creates a workspace with workspace uri
     (needed for id) on the server.
     """
-    ### The create-workspace request changed:
-    ###
-    ### POST /workspace?name=...&uri=...&sharing_mode_uri=...
-    ### Instead of path params query params are used now.
     ### `uri` is optional.
-    uri = workspace.lower()+'.uri'
+    if not uri:
+        uri = workspace.lower()+'.uri'
     url = ('workspace?name=%s&uri=%s&sharing_mode_uri=dmx.workspaces.%s' %
             (workspace.replace(' ', '%20'), uri.replace(' ', '%20'), ws_type))
     topic_id = write_request(url, expect_json=True)["id"]
@@ -539,10 +549,6 @@ def reveal_topic(workspace, map_id, topic_id, x=0, y=0, pinned=False):
     This function reveales a topic (id) on a topicmap (id) at
     position x, y, pinned or unpinned
     """
-    #
-    ## work in progress
-    #
-    # ~ # Do we need small letters here?
     if pinned:
         pinned=str('true')
     else:
