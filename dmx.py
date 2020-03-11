@@ -761,7 +761,7 @@ def main(args):
     parser.add_argument(
         '-f', '--file',
         type=str,
-        help='Creates a new topic from json file in a specified workspace  \
+        help='Creates a new topic from json file in a specified workspace \
               with -f file name and -w workspace name.',
         required=False,
         default=None
