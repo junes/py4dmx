@@ -41,6 +41,7 @@ import os
 import sys
 import json
 import base64
+# ~ import configparser
 import configparser
 import hashlib
 import argparse
@@ -71,6 +72,7 @@ def read_config_file():
     config_file_name = 'dmx.cfg'
     config_file = os.path.join(script_dir, config_file_name)
     ## if empty or missing, use these parameters
+    # ~ config = configparser.SafeConfigParser()
     config = configparser.SafeConfigParser()
     # config.read(DEFAULT_CONFIG)
     if os.path.isfile(config_file):
@@ -86,7 +88,6 @@ def read_dmx_config(config_properties):
     and overwrites the config settings with new values.
     """
     global config
-    # ~ config = ConfigParser.SafeConfigParser()
     config = configparser.SafeConfigParser()
     dmx_params = {}
     dmx_config_file = str(config_properties)
