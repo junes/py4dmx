@@ -549,8 +549,35 @@ def create_member(workspace='DMX', dm_user='testuser'):
     url = ('accesscontrol/user/%s/workspace/%s' %
            (dm_user, wsid))
     # topic_id = write_request(url)
-    write_request(url, expect_json=False)
-    return("OK")
+    response = write_request(url, expect_json=False)
+    return(response)
+
+
+def create_note(title, body, workspace='Private Workspace'):
+    """
+    This function creates a new note with text body
+    in the workspace on the server.
+    """
+    if verbose:
+        print("Creating a new note %s with text body %s in workspace %s" %
+              (title, body, workspace))
+
+    # ~ wsid = get_ws_id(workspace)
+    url = 'core/topic/'
+    payload = json.dumps(
+        {
+            "children": {
+                "dmx.notes.text": body,
+                "dmx.notes.title": title
+            },
+        "typeUri": "dmx.notes.note"
+        }
+    )
+    payload = json.loads(payload)
+    if verbose:
+        print("NEW NOTE: %s" % payload)
+    topic_id = write_request(url, payload, workspace)["id"]
+    return(topic_id)
 
 
 def send_data(payload, workspace='DMX'):
@@ -744,6 +771,14 @@ def main(args):
         default=None
     )
     parser.add_argument(
+        '-N', '--create_note',
+        type=str,
+        help='Create a new note with given title and body in a specified workspace \
+              with -N title, -B body and and -w workspace name.',
+        required=False,
+        default=None
+    )
+    parser.add_argument(
         '-R', '--reveal_topic',
         help='Reveal a topic on a topicmap in a specified workspace \
               with -w workspace name.',
@@ -853,6 +888,13 @@ def main(args):
         default=None
     )
     parser.add_argument(
+        '-B', '--note_body',
+        type=str,
+        help='Provide a text for the body of a new note.',
+        required=False,
+        default=None
+    )
+    parser.add_argument(
         '-T', '--ws_type',
         type=str,
         help='DEPRICATED! Use -S instead. (Define Type of the new workspace.)',
@@ -948,6 +990,15 @@ def main(args):
         else:
             print("ERROR! Missing name of new topicmap or missing workspace name.")
 
+    if argsdict['create_note']:
+        if argsdict['note_body'] and argsdict['workspace']:
+            data = create_note(
+                argsdict['create_note'], argsdict['note_body'], argsdict['workspace']
+            )
+            print(data)
+        else:
+            print("ERROR! Missing body of new note or missing workspace name.")
+
     if argsdict['by_type']:
         data = get_items(argsdict['by_type'])
         pretty_print(data)
@@ -960,7 +1011,7 @@ def main(args):
         data = get_topic(argsdict['get_topic'])
         pretty_print(data)
 
-    if argsdict['workspace'] and (argsdict['ws_type'] != None) and not argsdict['membership']:
+    if argsdict['workspace'] and (argsdict['ws_type']) and not argsdict['membership']:
         # Does not work with 'private' for now!
         if argsdict['ws_type'] in ["confidential", "collaborative", "public", "common"]:
             if verbose:
