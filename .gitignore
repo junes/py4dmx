@@ -2,7 +2,7 @@ dmx.cfg
 *.bak
 
 # GitLab CI
-\.gitlab-ci.yml
+.gitlab-ci.yml
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -27,7 +27,7 @@ parts/
 sdist/
 var/
 *.egg-info/
-\.installed.cfg
+.installed.cfg
 *.egg
 
 # PyInstaller
