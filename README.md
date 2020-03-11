@@ -3,9 +3,10 @@ py4dmx - dmx.py
 
 
 The aim of this python script is to provide a set of python functions to play
-with DMX's REST API.
+with DMX's REST API. (There are still some issues! ;-))
 
-There are still some issues!
+Copy `dmx.cfg.example` to `dmx.cfg` and adjust it to your needs.
+
 
 Some examples:
 
@@ -31,6 +32,13 @@ Some examples:
 
  * `dmx.py -f note_example.json -w "DMX"`  
    creates a new note topic from file note_example.json in workspace "DMX".
+
+ * `dmx.py -N "foo" -B "bar" -w "Private Workspace"`  
+   creates a new note topic with title "foo" and body "bar" in workspace "Private Workspace".
+
+ * `dmx.py -M "my topicmap" -w "Private Workspace"`  
+   creates a new topicmap "my topicmap" in workspace "Private Workspace".
+
 
 
 Copyright (c) 2019 DMX Systems <https://dmx.systems>    
