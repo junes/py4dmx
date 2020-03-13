@@ -644,6 +644,8 @@ def import_vcard(vcard_file, workspace):
         print ("VERSION: %s" % version)
     if int(version[0]) < 3 or int(version[1]) < 6:
         print('SORRY! VCARD option requires Python 3.6 or higher.')
+        # make pylint3 happy:
+        ModuleNotFoundError = ''
         sys.exit(0)
     else:
         try:
