@@ -315,6 +315,11 @@ def write_request(url, payload=None, workspace='DMX', method='POST', expect_json
             )
         except urllib.error.HTTPError as e:
             print('Write Data Error: '+str(e))
+            json_error = {"id": "FAILED!"}
+            response = json.loads(json.dumps(json_error))
+            if verbose:
+                print("RESPONSE: %s" % response)
+            return(response)
         except json.decoder.JSONDecodeError as e:
             print('JSON Decoder Error: '+str(e))
         else:
@@ -586,7 +591,7 @@ def create_note(title, body, workspace='Private Workspace'):
                 "dmx.notes.text": body,
                 "dmx.notes.title": title
             },
-        "typeUri": "dmx.notes.note"
+            "typeUri": "dmx.notes.note"
         }
     )
     payload = json.loads(payload)
@@ -605,7 +610,6 @@ def send_data(payload, workspace='DMX'):
         print("VERBOSE: %s" % verbose)
         print("SEND_DATA: sending data to workspace '%s'" % workspace)
     url = 'core/topic/'
-    # topic_id = write_request(url, payload, workspace)["topic"]["id"]
     topic_id = write_request(url, payload, workspace)["id"]
     return(topic_id)
 
@@ -629,7 +633,7 @@ def reveal_topic(workspace, map_id, topic_id, x=0, y=0, pinned=False):
     return(response)
 
 
-def import_vcard(vcard, workspace):
+def import_vcard(vcard_file, workspace):
     """
     This function imports data from a vcard file and creates a person topic.
     """
@@ -641,65 +645,132 @@ def import_vcard(vcard, workspace):
         print('Please install module python3-vobject)')
         sys.exit(1)
 
-    payload = read_file(vcard)
-    if verbose:
-        print("VCARD FILE:\n%s" % payload)
+    payload = read_file(vcard_file)
+    # ~ if verbose:
+        # ~ print("VCARD FILE:\n%s" % payload)
     vcard = vobject.readOne(payload)
     if verbose:
         vcard.prettyPrint()
 
+    ## firstname
+    first_name = ''
     try:
         first_name = vcard.n.value.given
     except:
-        firstname = ''
         pass
 
+    ## lastname
+    last_name = ''
     try:
         last_name = vcard.n.value.family
     except:
-        lastname = ''
         pass
 
+    ## tel
+    tel_mobile = ''
+    tel_home = ''
+    tel_work = ''
+    try:
+        for tel in vcard.contents["tel"]:
+            if tel.params["TYPE"] in [
+                    ["CELL", "VOICE"],
+                    ["VOICE", "CELL"],
+                    ["CELL"],
+                    ["MOBILE"],
+                    ["MOBIL"]
+                ]:
+                tel_mobile = tel.value
+            if tel.params["TYPE"] in [
+                    ["HOME", "VOICE"],
+                    ["VOICE", "HOME"],
+                    ["HOME"],
+                    ["VOICE"]
+                ]:
+                tel_home = tel.value
+            if tel.params["TYPE"] in [
+                    ["WORK", "VOICE"],
+                    ["VOICE", "WORK"],
+                    ["WORK"]
+                ]:
+                tel_work = tel.value
+    except KeyError:
+        pass
+
+    ## bday
+    birthday = [None] * 3 # create an empty list with 3 fields
+    birthday[0] = '' # year
+    birthday[1] = '' # month
+    birthday[2] = '' # day
+    try:
+        bday = vcard.bday.value
+    except AttributeError:
+        pass
+    else:
+        birthday = bday.split('-')
+
+    ## note
     try:
         note = vcard.note.value
     except:
         note = ''
         pass
 
+    ## address ##
+    ## home
+    adr_home_street = ''
+    adr_home_code = ''
+    adr_home_city = ''
+    adr_home_region = ''
+    adr_home_country = ''
+    ## work
+    adr_work_street = ''
+    adr_work_code = ''
+    adr_work_city = ''
+    adr_work_region = ''
+    adr_work_country = ''
     try:
-        for tel in vcard.contents["tel"]:
-            if tel.params["TYPE"] in [["CELL", "VOICE"], ["VOICE", "CELL"], ["CELL"], ["MOBILE"], ["MOBIL"]]:
-                tel_mobile = tel.value
-            else:
-                tel_mobile = ''
-            if tel.params["TYPE"] in [["HOME", "VOICE"], ["VOICE", "HOME"], ["HOME"], ["VOICE"]]:
-                tel_home = tel.value
-            else:
-                tel_home = ''
-            if tel.params["TYPE"] in [["WORK", "VOICE"], ["VOICE", "WORK"], ["WORK"]]:
-                tel_work = tel.value
-            else:
-                tel_work = ''
+        for adr in vcard.contents["adr"]:
+            if adr.params["TYPE"] in [["HOME"], ["PRIVATE"]]:
+                adr_home_street = adr.value.street
+                adr_home_code = adr.value.code
+                adr_home_city = adr.value.city
+                adr_home_region = adr.value.region
+                adr_home_country = adr.value.country
+            if adr.params["TYPE"] in [["WORK"], ["OFFICE"]]:
+                adr_work_street = adr.value.street
+                adr_work_code = adr.value.code
+                adr_work_city = adr.value.city
+                adr_work_region = adr.value.region
+                adr_work_country = adr.value.country
     except KeyError:
-        tel_mobile = ''
-        tel_home = ''
-        tel_work = ''
         pass
 
+    ## email
+    emails_to_create = []
+    try:
+        for email in vcard.contents["email"]:
+            email_adr = email.value.lower()
+            if hasattr(email, "type_param"):
+                email_adr_type = email.type_param.lower()
+                if email_adr_type == "internet":
+                    emails_to_create.append({"value": email_adr})
+    except KeyError:
+        pass
+    emails_to_create = json.loads(json.dumps(emails_to_create))
+
+    ## create payload
     url = 'core/topic/'
     payload = json.dumps(
         {
             "typeUri": "dmx.contacts.person",
             "children": {
                 "dmx.datetime.date#dmx.contacts.date_of_birth": {
-                    "value": "1 30 2020",
-                    "assoc": {
-                        "children": {
-                            "dmx.contacts.date_of_birth": "ref_uri:dmx.contacts.date_of_birth"
-                        }
-                    }
+                    "dmx.datetime.day": birthday[2],
+                    "dmx.datetime.month": birthday[1],
+                    "dmx.datetime.year": birthday[0]
                 },
                 "dmx.contacts.person_description": note,
+                "dmx.contacts.email_address": emails_to_create,
                 "dmx.contacts.person_name": {
                     "dmx.contacts.first_name": first_name,
                     "dmx.contacts.last_name": last_name
@@ -733,10 +804,11 @@ def import_vcard(vcard, workspace):
                 "dmx.contacts.address#dmx.contacts.address_entry": [
                     {
                         "children": {
-                            "dmx.contacts.street": "Parkstr. 3",
-                            "dmx.contacts.postal_code": "13187",
-                            "dmx.contacts.city": "Berlin",
-                            "dmx.contacts.country": "Germany"
+                            "dmx.contacts.street": adr_home_street,
+                            "dmx.contacts.postal_code": adr_home_code,
+                            "dmx.contacts.city": adr_home_city,
+                            "dmx.contacts.region": adr_home_region,
+                            "dmx.contacts.country": adr_home_country
                         },
                         "assoc": {
                             "children": {
@@ -748,10 +820,11 @@ def import_vcard(vcard, workspace):
                     },
                     {
                         "children": {
-                            "dmx.contacts.street": "Alexanderplatz 1",
-                            "dmx.contacts.postal_code": "10178",
-                            "dmx.contacts.city": "Berlin",
-                            "dmx.contacts.country": "Germany"
+                            "dmx.contacts.street": adr_work_street,
+                            "dmx.contacts.postal_code": adr_work_code,
+                            "dmx.contacts.city": adr_work_city,
+                            "dmx.contacts.region": adr_work_region,
+                            "dmx.contacts.country": adr_work_country
                         },
                         "assoc": {
                             "children": {

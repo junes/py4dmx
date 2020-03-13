@@ -19,8 +19,7 @@ WORKSPACE_TYPE='collaborative'
 TOPICMAP="MAP_${NUNC}"
 NOTE_FILE='./note_example.json'
 PERSON_FILE='./person_example.json'
-## VCARD_FILE='./person_example.vcf'
-VCARD_FILE='./bad.vcf'
+VCARD_FILE='./person_example.vcf'
 
 create_user () {
     echo -e "--\n${FUNCNAME[0]}:"
@@ -110,11 +109,11 @@ import_vcard () {
 ### main ###
 echo -e "\nRun Tests:"
 create_user
-# user_login
+user_login
 create_workspace
 create_member
-#create_note
-#create_person
-#create_topicmap
-#reveal_topic
+create_note
+create_person
+create_topicmap
+reveal_topic
 import_vcard
