@@ -5,6 +5,9 @@ py4dmx - dmx.py
 The aim of this python script is to provide a set of python functions to play
 with DMX's REST API. (There are still some issues! ;-))
 
+It requires Python Version 3.6 or higher for best results. If you want to test
+the VCARD import make sure the vobject module is installed (python3-vobject).
+
 Copy `dmx.cfg.example` to `dmx.cfg` and adjust it to your needs.
 
 
@@ -24,7 +27,7 @@ Some examples:
    will login user "myusername" into DMX and output the current session id.
 
  * `dmx.py -c /etc/dmx/config.properties -s`  
-   looks into the config file /etc/dmx/config.properties to read server settings and 
+   uses the config file /etc/dmx/config.properties to read server settings and 
    admin password from there to login to server and output the current session id.
 
  * `dmx.py -l -u "myusername" -p "mypassword" -m -w "my shared workspace" -n "pied.piper"`  
@@ -41,6 +44,9 @@ Some examples:
 
  * `dmy.py -R -i 1234 -o 5678 -x 150 -y 150 -P True -w "Private Workspace"`  
    reveales a topic with id 1234 on topicmap with id 4567 at position x=150 and y=150 in pinned mode.
+
+ * `dmy.py -V vcard.vcf -w "Private Workspace"`  
+   imports the contents of file vcard.vcf to a person topic in workspace "Private Workspace".
 
 
 Copyright (c) 2019 DMX Systems <https://dmx.systems>    
