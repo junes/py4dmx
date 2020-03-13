@@ -1,0 +1,15 @@
+BEGIN:VCARD
+VERSION:3.0
+N:Miller;Michael
+FN:Michael Miller
+TEL;TYPE=HOME:+0 123 456789
+TEL;TYPE=MOBILE:+9 876 543210
+TEL;TYPE=WORK:+1 234 567890
+ADR;TYPE=WORK:;;Parkstr. 3;Berlin;Berlin;13187;Germany
+ADR;TYPE=HOME:;;Alexanderplatz 1;Berlin;Berlin;10187;Germany
+EMAIL;TYPE=INTERNET,PREF:michael@example.org
+EMAIL;TYPE=INTERNET:m.miller@example.com
+NOTE:This is a note.
+BDAY:1969-07-20
+END:VCARD
+

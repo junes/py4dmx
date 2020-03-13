@@ -5,6 +5,14 @@
             "dmx.contacts.first_name": "Marta",
             "dmx.contacts.last_name": "Miller"
         },
+        "dmx.contacts.email_address": [
+            {
+                "value": "marta@example.org"
+            },
+            {
+                "value": "marta.miller@example.com"
+            }
+        ],
         "dmx.contacts.phone_number#dmx.contacts.phone_entry": [
             {
                 "value": "1 234 567890",

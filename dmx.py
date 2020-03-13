@@ -41,11 +41,13 @@ import os
 import sys
 import json
 import base64
-# ~ import configparser
 import configparser
 import hashlib
 import argparse
-import urllib.request, urllib.parse, urllib.error, http.cookiejar
+import urllib.request
+import urllib.parse
+import urllib.error
+import http.cookiejar
 
 ## define global variables
 config = []       # The data required to access and login to dmx
@@ -149,15 +151,29 @@ def check_payload(payload):
     # ~ return(payload)
 
 
-def import_payload(json_filename, default="payload.json"):
+# ~ def import_payload(json_filename, default="payload.json"):
+    # ~ """
+    # ~ Here we open the file and import the content as json.
+    # ~ """
+    # ~ if verbose:
+        # ~ print("Reading file %s" % (json_filename))
+    # ~ with open(json_filename, 'r') as data_file:
+        # ~ payload = json.load(data_file)
+    # ~ return(payload)
+
+
+def read_file(filename, default="payload.file"):
     """
-    Here we open the file and import the content as json.
+    Here we open the file and read the content.
     """
     if verbose:
-        print("Reading file %s" % (json_filename))
-    with open(json_filename, 'r') as data_file:
-        payload = json.load(data_file)
-    return(payload)
+        print("Reading file %s" % (filename))
+    with open(filename, 'r') as data_file:
+        data = data_file.read()
+    data_file.close()
+    if verbose:
+        print("READ FILE DATA: \n%s" % data)
+    return(data)
 
 
 def query_yes_no(question, default="no"):
@@ -299,6 +315,11 @@ def write_request(url, payload=None, workspace='DMX', method='POST', expect_json
             )
         except urllib.error.HTTPError as e:
             print('Write Data Error: '+str(e))
+            json_error = {"id": "FAILED!"}
+            response = json.loads(json.dumps(json_error))
+            if verbose:
+                print("RESPONSE: %s" % response)
+            return(response)
         except json.decoder.JSONDecodeError as e:
             print('JSON Decoder Error: '+str(e))
         else:
@@ -570,7 +591,7 @@ def create_note(title, body, workspace='Private Workspace'):
                 "dmx.notes.text": body,
                 "dmx.notes.title": title
             },
-        "typeUri": "dmx.notes.note"
+            "typeUri": "dmx.notes.note"
         }
     )
     payload = json.loads(payload)
@@ -589,7 +610,6 @@ def send_data(payload, workspace='DMX'):
         print("VERBOSE: %s" % verbose)
         print("SEND_DATA: sending data to workspace '%s'" % workspace)
     url = 'core/topic/'
-    # topic_id = write_request(url, payload, workspace)["topic"]["id"]
     topic_id = write_request(url, payload, workspace)["id"]
     return(topic_id)
 
@@ -611,6 +631,218 @@ def reveal_topic(workspace, map_id, topic_id, x=0, y=0, pinned=False):
     )
     response = write_request(url, payload, workspace, expect_json=False)
     return(response)
+
+
+def import_vcard(vcard_file, workspace):
+    """
+    This function imports data from a vcard file and creates a person topic.
+    """
+    try:
+        import vobject
+    except ModuleNotFoundError as err:
+        # Error handling
+        print(err)
+        print('Please install module python3-vobject)')
+        sys.exit(1)
+
+    payload = read_file(vcard_file)
+    # ~ if verbose:
+        # ~ print("VCARD FILE:\n%s" % payload)
+    vcard = vobject.readOne(payload)
+    if verbose:
+        vcard.prettyPrint()
+
+    ## firstname
+    first_name = ''
+    try:
+        first_name = vcard.n.value.given
+    except:
+        pass
+
+    ## lastname
+    last_name = ''
+    try:
+        last_name = vcard.n.value.family
+    except:
+        pass
+
+    ## tel
+    tel_mobile = ''
+    tel_home = ''
+    tel_work = ''
+    try:
+        for tel in vcard.contents["tel"]:
+            if tel.params["TYPE"] in [
+                    ["CELL", "VOICE"],
+                    ["VOICE", "CELL"],
+                    ["CELL"],
+                    ["MOBILE"],
+                    ["MOBIL"]
+                ]:
+                tel_mobile = tel.value
+            if tel.params["TYPE"] in [
+                    ["HOME", "VOICE"],
+                    ["VOICE", "HOME"],
+                    ["HOME"],
+                    ["VOICE"]
+                ]:
+                tel_home = tel.value
+            if tel.params["TYPE"] in [
+                    ["WORK", "VOICE"],
+                    ["VOICE", "WORK"],
+                    ["WORK"]
+                ]:
+                tel_work = tel.value
+    except KeyError:
+        pass
+
+    ## bday
+    birthday = [None] * 3 # create an empty list with 3 fields
+    birthday[0] = '' # year
+    birthday[1] = '' # month
+    birthday[2] = '' # day
+    try:
+        bday = vcard.bday.value
+    except AttributeError:
+        pass
+    else:
+        birthday = bday.split('-')
+
+    ## note
+    try:
+        note = vcard.note.value
+    except:
+        note = ''
+        pass
+
+    ## address ##
+    ## home
+    adr_home_street = ''
+    adr_home_code = ''
+    adr_home_city = ''
+    adr_home_region = ''
+    adr_home_country = ''
+    ## work
+    adr_work_street = ''
+    adr_work_code = ''
+    adr_work_city = ''
+    adr_work_region = ''
+    adr_work_country = ''
+    try:
+        for adr in vcard.contents["adr"]:
+            if adr.params["TYPE"] in [["HOME"], ["PRIVATE"]]:
+                adr_home_street = adr.value.street
+                adr_home_code = adr.value.code
+                adr_home_city = adr.value.city
+                adr_home_region = adr.value.region
+                adr_home_country = adr.value.country
+            if adr.params["TYPE"] in [["WORK"], ["OFFICE"]]:
+                adr_work_street = adr.value.street
+                adr_work_code = adr.value.code
+                adr_work_city = adr.value.city
+                adr_work_region = adr.value.region
+                adr_work_country = adr.value.country
+    except KeyError:
+        pass
+
+    ## email
+    emails_to_create = []
+    try:
+        for email in vcard.contents["email"]:
+            email_adr = email.value.lower()
+            if hasattr(email, "type_param"):
+                email_adr_type = email.type_param.lower()
+                if email_adr_type == "internet":
+                    emails_to_create.append({"value": email_adr})
+    except KeyError:
+        pass
+    emails_to_create = json.loads(json.dumps(emails_to_create))
+
+    ## create payload
+    url = 'core/topic/'
+    payload = json.dumps(
+        {
+            "typeUri": "dmx.contacts.person",
+            "children": {
+                "dmx.datetime.date#dmx.contacts.date_of_birth": {
+                    "dmx.datetime.day": birthday[2],
+                    "dmx.datetime.month": birthday[1],
+                    "dmx.datetime.year": birthday[0]
+                },
+                "dmx.contacts.person_description": note,
+                "dmx.contacts.email_address": emails_to_create,
+                "dmx.contacts.person_name": {
+                    "dmx.contacts.first_name": first_name,
+                    "dmx.contacts.last_name": last_name
+                },
+                "dmx.contacts.phone_number#dmx.contacts.phone_entry": [
+                    {
+                        "value": tel_home,
+                        "assoc": {
+                            "children": {
+                                "dmx.contacts.phone_label": "ref_uri:dmx.contacts.home_phone"
+                            }
+                        }
+                    },
+                    {
+                        "value": tel_work,
+                        "assoc": {
+                            "children": {
+                                "dmx.contacts.phone_label": "ref_uri:dmx.contacts.work_phone"
+                            }
+                        }
+                    },
+                    {
+                        "value": tel_mobile,
+                        "assoc": {
+                            "children": {
+                                "dmx.contacts.phone_label": "ref_uri:dmx.contacts.mobile"
+                            }
+                        }
+                    }
+                ],
+                "dmx.contacts.address#dmx.contacts.address_entry": [
+                    {
+                        "children": {
+                            "dmx.contacts.street": adr_home_street,
+                            "dmx.contacts.postal_code": adr_home_code,
+                            "dmx.contacts.city": adr_home_city,
+                            "dmx.contacts.region": adr_home_region,
+                            "dmx.contacts.country": adr_home_country
+                        },
+                        "assoc": {
+                            "children": {
+                                "dmx.contacts.address_label": {
+                                    "value": "ref_uri:dmx.contacts.home_address"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "children": {
+                            "dmx.contacts.street": adr_work_street,
+                            "dmx.contacts.postal_code": adr_work_code,
+                            "dmx.contacts.city": adr_work_city,
+                            "dmx.contacts.region": adr_work_region,
+                            "dmx.contacts.country": adr_work_country
+                        },
+                        "assoc": {
+                            "children": {
+                                "dmx.contacts.address_label": "ref_uri:dmx.contacts.work_address"
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+
+    )
+    payload = json.loads(payload)
+    if verbose:
+        print("NEW PERSON: %s" % payload)
+    topic_id = write_request(url, payload, workspace)["id"]
+    return(topic_id)
+
 
 def get_topic(topic_id):
     """
@@ -742,13 +974,6 @@ def main(args):
         and comes with ABSOLUTELY NO WARRANTY.'
     )
     parser.add_argument(
-        '-v', '--verbose',
-        help='Enable verbose mode.',
-        action='store_true',
-        required=False,
-        default=None
-    )
-    parser.add_argument(
         '-b', '--by_type',
         type=str,
         help='Get all items of a TopicType by its topic.type.uri.',
@@ -756,32 +981,22 @@ def main(args):
         default=None
     )
     parser.add_argument(
+        '-B', '--note_body',
+        type=str,
+        help='Provide a text for the body of a new note.',
+        required=False,
+        default=None
+    )
+    parser.add_argument(
+        '-c', '--config_properties',
+        type=str,
+        help='Reads config data from dmx config properties file.',
+        required=False,
+        default=None
+    )
+    parser.add_argument(
         '-C', '--create_user',
         help='Create a user with -u username and -p password.',
-        action='store_true',
-        required=False,
-        default=None
-    )
-    parser.add_argument(
-        '-M', '--create_topicmap',
-        type=str,
-        help='Create a new topicmap with given name in a specified workspace \
-              with -M map name and -w workspace name.',
-        required=False,
-        default=None
-    )
-    parser.add_argument(
-        '-N', '--create_note',
-        type=str,
-        help='Create a new note with given title and body in a specified workspace \
-              with -N title, -B body and and -w workspace name.',
-        required=False,
-        default=None
-    )
-    parser.add_argument(
-        '-R', '--reveal_topic',
-        help='Reveal a topic on a topicmap in a specified workspace \
-              with -w workspace name.',
         action='store_true',
         required=False,
         default=None
@@ -802,23 +1017,9 @@ def main(args):
         default=None
     )
     parser.add_argument(
-        '-c', '--config_properties',
-        type=str,
-        help='Reads config data from dmx config properties file.',
-        required=False,
-        default=None
-    )
-    parser.add_argument(
         '-i', '--topic_id',
         type=str,
         help='Provide a numerical topic id.',
-        required=False,
-        default=None
-    )
-    parser.add_argument(
-        '-o', '--topicmap_id',
-        type=str,
-        help='Provide a numerical topicmap id.',
         required=False,
         default=None
     )
@@ -838,9 +1039,32 @@ def main(args):
         default=None
     )
     parser.add_argument(
+        '-M', '--create_topicmap',
+        type=str,
+        help='Create a new topicmap with given name in a specified workspace \
+              with -M map name and -w workspace name.',
+        required=False,
+        default=None
+    )
+    parser.add_argument(
         '-n', '--new_member',
         type=str,
         help='Provide the username of new member.',
+        required=False,
+        default=None
+    )
+    parser.add_argument(
+        '-N', '--create_note',
+        type=str,
+        help='Create a new note with given title and body in a specified workspace \
+              with -N title, -B body and and -w workspace name.',
+        required=False,
+        default=None
+    )
+    parser.add_argument(
+        '-o', '--topicmap_id',
+        type=str,
+        help='Provide a numerical topicmap id.',
         required=False,
         default=None
     )
@@ -859,9 +1083,32 @@ def main(args):
         default=None
     )
     parser.add_argument(
+        '-R', '--reveal_topic',
+        help='Reveal a topic on a topicmap in a specified workspace \
+              with -w workspace name.',
+        action='store_true',
+        required=False,
+        default=None
+    )
+    parser.add_argument(
+        '-P', '--topicmap_pinned',
+        type=str,
+        help='Provide a boolen (True|False) if topic should be pinned \
+              on topicmap. (default: False)',
+        required=False,
+        default=None
+    )
+    parser.add_argument(
         '-s', '--get_session_id',
         help='Get a valid session id.',
         action='store_true',
+        required=False,
+        default=None
+    )
+    parser.add_argument(
+        '-S', '--ws_sharing_mode',
+        type=str,
+        help='Set the sharing mode of the new workspace.',
         required=False,
         default=None
     )
@@ -873,9 +1120,31 @@ def main(args):
         default=None
     )
     parser.add_argument(
+        '-T', '--ws_type',
+        type=str,
+        help='DEPRICATED! Use -S instead. (Define Type of the new workspace.)',
+        required=False,
+        default=None
+    )
+    parser.add_argument(
         '-u', '--user',
         type=str,
         help='Provide a username.',
+        required=False,
+        default=None
+    )
+    parser.add_argument(
+        '-v', '--verbose',
+        help='Enable verbose mode.',
+        action='store_true',
+        required=False,
+        default=None
+    )
+    parser.add_argument(
+        '-V', '--import_vcard',
+        type=str,
+        help='Create a new person topic in a specified workspace \
+              from given vcard file, -V filename and and -w workspace name.',
         required=False,
         default=None
     )
@@ -884,27 +1153,6 @@ def main(args):
         type=str,
         help='Create a new workspace by name with -T type or just the \
               name of a workspace.',
-        required=False,
-        default=None
-    )
-    parser.add_argument(
-        '-B', '--note_body',
-        type=str,
-        help='Provide a text for the body of a new note.',
-        required=False,
-        default=None
-    )
-    parser.add_argument(
-        '-T', '--ws_type',
-        type=str,
-        help='DEPRICATED! Use -S instead. (Define Type of the new workspace.)',
-        required=False,
-        default=None
-    )
-    parser.add_argument(
-        '-S', '--ws_sharing_mode',
-        type=str,
-        help='Set the sharing mode of the new workspace.',
         required=False,
         default=None
     )
@@ -922,19 +1170,17 @@ def main(args):
         required=False,
         default=None
     )
-    parser.add_argument(
-        '-P', '--topicmap_pinned',
-        type=str,
-        help='Provide a boolen (True|False) if topic should be pinned \
-              on topicmap. (default: False)',
-        required=False,
-        default=None
-    )
+
+
     args = parser.parse_args()
     argsdict = vars(args)
 
     ## action on arguments (order matters!) ##
-
+    """
+    These functions shall not include logic, but only check and interpret the
+    arguments and then call a funtion (ideally named like argument) to do
+    the computing.
+    """
     # enable verbose mode
     if argsdict['verbose']:
         verbose = True
@@ -957,9 +1203,21 @@ def main(args):
             print("ERROR! Missing username or password.")
 
     if argsdict['file']:
+        """
+        This function needs rewrinting! The logic of importing data from
+        json file should be in a separate function.
+        """
         if verbose:
             print("Importing json data from file %s" % (argsdict['file']))
-        payload = import_payload(str(argsdict['file']))
+        # ~ payload = import_payload(str(argsdict['file']))
+        payload = read_file(str(argsdict['file']))
+        if verbose:
+            print("JSON DATA FROM FILE:\n%s" % payload)
+        # ~ payload = json.load(payload)
+        # ~ payload = json.dumps(payload)
+        payload = payload.replace('\n', '')
+        payload = json.loads(payload)
+        payload = check_payload(payload)
         payload_len = len(payload)
         if argsdict['workspace']:
             if payload_len > 0:
@@ -972,8 +1230,17 @@ def main(args):
         else:
             print("ERROR! Missing workspace declaration.")
 
+    if argsdict['import_vcard']:
+        if verbose:
+            print("Importing vcard data from file %s" % (argsdict['import_vcard']))
+        if argsdict['workspace']:
+            data = import_vcard(argsdict['import_vcard'], argsdict['workspace'])
+            print(data)
+        else:
+            print("ERROR! Missing workspace declaration.")
+
     if argsdict['create_user']:
-        if (argsdict['user'] != None) and (argsdict['password'] != None):
+        if (argsdict['user'] and argsdict['password']):
             data = create_user(argsdict['user'], argsdict['password'])
             print(data)
         else:
@@ -1078,6 +1345,7 @@ def main(args):
         else:
             print('ERROR! Missing topic_id or missing topicmap_id \
                    or missing workspace name.')
+
     if len(sys.argv) < 2:
         parser.print_usage()
         print('Use -h or --help for more information.')

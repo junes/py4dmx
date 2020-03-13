@@ -19,6 +19,7 @@ WORKSPACE_TYPE='collaborative'
 TOPICMAP="MAP_${NUNC}"
 NOTE_FILE='./note_example.json'
 PERSON_FILE='./person_example.json'
+VCARD_FILE='./person_example.vcf'
 
 create_user () {
     echo -e "--\n${FUNCNAME[0]}:"
@@ -96,6 +97,14 @@ reveal_topic () {
     RESULT="$( ${PY4DMX} ${VERBOSE} -l -u ${USER} -p ${PASS} -R -i ${NOTE_ID} -o ${TOPICMAP_ID} -x 150 -y 150 -P True -w ${WORKSPACE} )"
     echo "${RESULT}"
 }
+import_vcard () {
+    echo -e "--\n${FUNCNAME[0]}:"
+    if [ ${VERBOSE} ]; then
+        echo "INFO: Importing person topic from vcard ${VCARD_FILE} in workpace ${WORKSPACE}".
+    fi
+    RESULT="$( ${PY4DMX} ${VERBOSE} -l -u ${USER} -p ${PASS} -V ${VCARD_FILE} -w ${WORKSPACE} )"
+    echo "${RESULT}"
+}
 
 ### main ###
 echo -e "\nRun Tests:"
@@ -107,3 +116,4 @@ create_note
 create_person
 create_topicmap
 reveal_topic
+import_vcard
