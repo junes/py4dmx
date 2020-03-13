@@ -39,6 +39,7 @@ jpn - 20170231
 
 import os
 import sys
+import platform
 import json
 import base64
 import configparser
@@ -637,13 +638,21 @@ def import_vcard(vcard_file, workspace):
     """
     This function imports data from a vcard file and creates a person topic.
     """
-    try:
-        import vobject
-    except ModuleNotFoundError as err:
-        # Error handling
-        print(err)
-        print('Please install module python3-vobject)')
+
+    version = platform.python_version().split('.')
+    if verbose:
+        print ("VERSION: %s" % version)
+    if int(version[0]) < 3 or int(version[1]) < 6:
+        print('ERROR! VCARD option requires Python 3.6 or higher.')
         sys.exit(1)
+    else:
+        try:
+            import vobject
+        except ModuleNotFoundError as err:
+            # Error handling
+            print(err)
+            print('Please install module python3-vobject')
+            sys.exit(1)
 
     payload = read_file(vcard_file)
     # ~ if verbose:
