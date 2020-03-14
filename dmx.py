@@ -51,14 +51,13 @@ import urllib.error
 import http.cookiejar
 
 ## define global variables
-config = []       # The data required to access and login to dmx
-verbose = False   # verbose mode (True|False)
-jsessionid = ""   # The session ID
+VERBOSE = False   # VERBOSE mode (True|False)
+config = configparser.SafeConfigParser()
 
 
-def read_config_file():
+def read_default_config_file():
     """
-    Put this content in your dmx.cfg:
+    Put this content in your dmx.cfg file:
 
     [Credentials]
     authname = admin
@@ -69,40 +68,41 @@ def read_config_file():
     port = 8080
     workspace = DMX
     """
-    global config
+    # ~ global config
 
     script_dir = os.path.dirname(__file__) #<-- absolute dir the script is in
     config_file_name = 'dmx.cfg'
     config_file = os.path.join(script_dir, config_file_name)
     ## if empty or missing, use these parameters
     # ~ config = configparser.SafeConfigParser()
-    config = configparser.SafeConfigParser()
     # config.read(DEFAULT_CONFIG)
     if os.path.isfile(config_file):
         config.read(config_file)
+        if VERBOSE:
+            print("CONFIG: %s" % config)
+        ###
+        ### Here we need to write the config data
+        ###
     else:
         print("ERROR! Config file %s not found." % config_file)
         sys.exit(1)
 
 
-def read_dmx_config(config_properties):
+def read_dmx_config_properties_file(file_name='config.prperties'):
     """
     Reads the configuration data from '/path/to/dmx/config.properties'
     and overwrites the config settings with new values.
     """
-    global config
-    config = configparser.SafeConfigParser()
     dmx_params = {}
-    dmx_config_file = str(config_properties)
-    if os.access(dmx_config_file, os.R_OK):
-        with open(dmx_config_file) as f_in:
+    if os.access(file_name, os.R_OK):
+        with open(file_name) as f_in:
             lines = [_f for _f in (line.rstrip() for line in f_in) if _f]
     for ln in lines:
         if not ln[0] in ('', ' ', '#', ';'):
             try:
                 key, val = ln.strip().replace(" ", "").split('=', 1)
             except ValueError:
-                print("INFO: No value found for %s in %s" % (key, dmx_config_file))
+                print("INFO: No value found for %s in %s" % (key, file_name))
             else:
                 dmx_params[key.lower()] = val
 
@@ -118,10 +118,10 @@ def read_dmx_config(config_properties):
 
     for mandatory in ['org.osgi.service.http.port', 'dmx.security.initial_admin_password']:
         if mandatory not in list(dmx_params.keys()):
-            print("ERROR! Could not read config file %s." % dmx_config_file)
-            sys.exit(0)
-
-    return
+            print("ERROR! Could not read config file %s." % file_name)
+            sys.exit(1)
+    if VERBOSE:
+        print("CONFIG: %s" % config)
 
 
 def check_payload(payload):
@@ -129,9 +129,14 @@ def check_payload(payload):
     This function checks the payload to be send to server and makes sure
     it is a valid json format.
     """
-    if verbose:
+    if VERBOSE:
         print("CHECK_PAYLOAD: %s" % payload)
         print("PAYLOAD TYPE = %s" % type(payload))
+    # ~ if isinstance(payload, str):
+        # ~ payload=json.loads(payload)
+        # ~ if VERBOSE:
+            # ~ print("Retyped payload to 'dict': %s" % payload)
+    # ~ return(payload)
     ## make sure payload is a dict before we send it
     ## Test if the payload is a valid json object and get it sorted.
     try:
@@ -140,39 +145,22 @@ def check_payload(payload):
         print("ERROR! Could not read Payload. Not JSON?")
         sys.exit(1)
     else:
-        if verbose:
+        if VERBOSE:
             print("LenPayload: %s" % len(payload))
             pretty_print(payload)
         return(payload)
-
-    # ~ if isinstance(payload, str):
-        # ~ payload=json.loads(payload)
-        # ~ if verbose:
-            # ~ print("Retyped payload to 'dict': %s" % payload)
-    # ~ return(payload)
-
-
-# ~ def import_payload(json_filename, default="payload.json"):
-    # ~ """
-    # ~ Here we open the file and import the content as json.
-    # ~ """
-    # ~ if verbose:
-        # ~ print("Reading file %s" % (json_filename))
-    # ~ with open(json_filename, 'r') as data_file:
-        # ~ payload = json.load(data_file)
-    # ~ return(payload)
 
 
 def read_file(filename, default="payload.file"):
     """
     Here we open the file and read the content.
     """
-    if verbose:
+    if VERBOSE:
         print("Reading file %s" % (filename))
     with open(filename, 'r') as data_file:
         data = data_file.read()
     data_file.close()
-    if verbose:
+    if VERBOSE:
         print("READ FILE DATA: \n%s" % data)
     return(data)
 
@@ -226,8 +214,9 @@ def get_session_id():
     """
     Creates an initial session and returns the session id.
     """
-    global jsessionid
-    if not jsessionid:
+    ## test if the local variable jsessiond exists
+    ## HINT: it checks for the string, so then var name must be quoted
+    if 'jsessionid' not in locals():
         server = config.get('Connection', 'server')
         port = config.get('Connection', 'port')
         url = 'http://%s:%s/core/topic/0' % (server, port)
@@ -255,7 +244,7 @@ def read_request(url):
     port = config.get('Connection', 'port')
     url = 'http://%s:%s/%s' % (server, port, url)
     jsessionid = get_session_id()
-    if verbose:
+    if VERBOSE:
         print("Read Data %s" % url)
     req = urllib.request.Request(url)
     req.add_header("Cookie", "JSESSIONID=%s" % jsessionid)
@@ -271,12 +260,12 @@ def read_request(url):
         except urllib.error.HTTPError as e:
             print('Read Data Error: '+str(e))
         else:
-            if verbose and response:
+            if VERBOSE and response:
                 print("RESPONSE TYPE = %s" % type(response))
                 # ~ print(response)
             return(response)
     else:
-        if verbose:
+        if VERBOSE:
             print("RESPONSE TYPE = %s" % type(response))
             pretty_print(response)
         return(response)
@@ -292,7 +281,7 @@ def write_request(url, payload=None, workspace='DMX', method='POST', expect_json
     port = config.get('Connection', 'port')
     url = 'http://%s:%s/%s' % (server, port, url)
     jsessionid = get_session_id()
-    if verbose:
+    if VERBOSE:
         print("Write Data %s" % url)
     wsid = get_ws_id(workspace)
     req = urllib.request.Request(url)
@@ -302,7 +291,7 @@ def write_request(url, payload=None, workspace='DMX', method='POST', expect_json
     if payload:
         payload = check_payload(payload)
     if payload and expect_json:
-        if verbose:
+        if VERBOSE:
             print('Sending with payload. Expecting JSON response.')
         if payload == {"": ""}:
             ## This needs fixing. It is a workarround to recevie empty JSON as
@@ -318,18 +307,18 @@ def write_request(url, payload=None, workspace='DMX', method='POST', expect_json
             print('Write Data Error: '+str(e))
             json_error = {"id": "FAILED!"}
             response = json.loads(json.dumps(json_error))
-            if verbose:
+            if VERBOSE:
                 print("RESPONSE: %s" % response)
             return(response)
         except json.decoder.JSONDecodeError as e:
             print('JSON Decoder Error: '+str(e))
         else:
-            if verbose:
+            if VERBOSE:
                 print("RESPONSE TYPE = %s" % type(response))
                 pretty_print(response)
             return(response)
     elif payload:
-        if verbose:
+        if VERBOSE:
             print('Sending data with payload. Not expecting JSON response.')
         if payload == {"": ""}:
             ## This needs fixing. It is a workarround to recevie empty JSON as
@@ -347,12 +336,12 @@ def write_request(url, payload=None, workspace='DMX', method='POST', expect_json
         except json.decoder.JSONDecodeError as e:
             print('JSON Decoder Error: '+str(e))
         else:
-            if verbose:
+            if VERBOSE:
                 print("RESPONSE TYPE = %s" % type(response))
                 # ~ print(response)
             return("OK")
     elif expect_json:
-        if verbose:
+        if VERBOSE:
             print('Sending data without payload. Expecting JSON response.')
         try:
             response = (json.loads(urllib.request.urlopen(req).read().decode('UTF-8')))
@@ -362,14 +351,14 @@ def write_request(url, payload=None, workspace='DMX', method='POST', expect_json
             print('JSON Decoder Error: '+str(e))
         else:
             response = json.loads(json.dumps(response))
-            if verbose:
+            if VERBOSE:
                 print("RESPONSE TYPE = %s" % type(response))
                 pretty_print(response)
             return(response)
     else:
         # This can be deleted, right?
         # if no payload
-        if verbose:
+        if VERBOSE:
             print('Got no payload. Got no expectation on response.')
         try:
             ## response = (json.loads(urllib.request.urlopen(req).read()))
@@ -383,13 +372,13 @@ def write_request(url, payload=None, workspace='DMX', method='POST', expect_json
             try:
                 response = json.loads(response)
             except:
-                if verbose:
+                if VERBOSE:
                     print("RESPONSE is not JSON")
                     print("RESPONSE TYPE = %s" % type(response))
                     # ~ print(response)
                 return("OK")
             else:
-                if verbose:
+                if VERBOSE:
                     print("RESPONSE is JSON")
                     print("RESPONSE TYPE = %s" % type(response))
                     pretty_print(response)
@@ -402,7 +391,7 @@ def create_user(dm_user='testuser', dm_pass='testpass'):
     """
     # check if username exits
     users = list(get_items('dmx.accesscontrol.username').values())
-    if verbose:
+    if VERBOSE:
         print("USERS: %s" % users)
     if dm_user in users:
         print("ERROR! User '%s' exists." % dm_user)
@@ -417,7 +406,7 @@ def create_user(dm_user='testuser', dm_pass='testpass'):
         # topic_id = write_request(url, payload)["id"]
         topic_id = write_request(url, payload)["id"]
         ## debug
-        if verbose:
+        if VERBOSE:
             print("TOPIC_ID = %s" % topic_id)
             print("New user '%s' was created with topic_id %s." % (dm_user, topic_id))
         return(topic_id)
@@ -429,7 +418,7 @@ def create_topicmap(tm_name, tm_type='dmx.topicmaps.topicmap', workspace='DMX'):
     """
     # check if topicmap exits (globally!!!)
     maps = list(get_items('dmx.topicmaps.topicmap').values())
-    if verbose:
+    if VERBOSE:
         print("CREATE TOPICMAP: %s" % tm_name)
         print("TOPICMAPS: %s" % maps)
     if tm_name in maps:
@@ -442,14 +431,14 @@ def create_topicmap(tm_name, tm_type='dmx.topicmaps.topicmap', workspace='DMX'):
         data = {"": ""}
         try:
             payload = json.loads(json.dumps(data, indent=3, sort_keys=True))
-            if verbose:
+            if VERBOSE:
                 print("LenPayload: %s" % len(payload))
         except:
             print("ERROR! Could not read Payload. Not JSON?")
             sys.exit(1)
 
         ## debug
-        if verbose:
+        if VERBOSE:
             pretty_print(payload)
 
         #topic_id = write_request(url)["id"]
@@ -521,7 +510,7 @@ def get_ws_id(workspace):
     This function gets the workspace ID for a workspace by its name.
     It's much faster to get it by its uri, if present.
     """
-    if verbose:
+    if VERBOSE:
         print("GET_WS_ID: Searching Workspace ID for %s" % workspace)
     url = ('core/topic?type_uri=dmx.workspaces.workspace_name'
            '&query="%s"' % workspace.replace(' ', '%20'))
@@ -532,7 +521,7 @@ def get_ws_id(workspace):
         if topic['typeUri'] == 'dmx.workspaces.workspace_name':
             wsnameid = (topic['id'])
             break
-    if verbose:
+    if VERBOSE:
         print("WS NAME ID = %s" % wsnameid)
     url = ('core/topic/%s/related_topics'
            '?assoc_type_uri=dmx.core.composition&my_role_type_uri='
@@ -540,7 +529,7 @@ def get_ws_id(workspace):
            'others_topic_type_uri=dmx.workspaces.workspace' %
            str(wsnameid))
     topic_id = read_request(url)[0]["id"]
-    if verbose:
+    if VERBOSE:
         print("WS ID = %s" % topic_id)
     return(topic_id)
 
@@ -565,7 +554,7 @@ def create_member(workspace='DMX', dm_user='testuser'):
     This function creates a user memebrship association for
     the workspace on the server.
     """
-    if verbose:
+    if VERBOSE:
         print("Creating Workspace membership for user %s in %s" % (dm_user, workspace))
     wsid = get_ws_id(workspace)
     url = ('accesscontrol/user/%s/workspace/%s' %
@@ -580,7 +569,7 @@ def create_note(title, body, workspace='Private Workspace'):
     This function creates a new note with text body
     in the workspace on the server.
     """
-    if verbose:
+    if VERBOSE:
         print("Creating a new note %s with text body %s in workspace %s" %
               (title, body, workspace))
 
@@ -596,7 +585,7 @@ def create_note(title, body, workspace='Private Workspace'):
         }
     )
     payload = json.loads(payload)
-    if verbose:
+    if VERBOSE:
         print("NEW NOTE: %s" % payload)
     topic_id = write_request(url, payload, workspace)["id"]
     return(topic_id)
@@ -607,8 +596,8 @@ def send_data(payload, workspace='DMX'):
     This function sends the topics according to payload to
     the workspace name on the server.
     """
-    if verbose:
-        print("VERBOSE: %s" % verbose)
+    if VERBOSE:
+        print("VERBOSE: %s" % VERBOSE)
         print("SEND_DATA: sending data to workspace '%s'" % workspace)
     url = 'core/topic/'
     topic_id = write_request(url, payload, workspace)["id"]
@@ -640,8 +629,8 @@ def import_vcard(vcard_file, workspace):
     """
 
     version = platform.python_version().split('.')
-    if verbose:
-        print ("VERSION: %s" % version)
+    if VERBOSE:
+        print("VERSION: %s" % version)
     if int(version[0]) < 3 or int(version[1]) < 6:
         print('SORRY! VCARD option requires Python 3.6 or higher.')
         # make pylint3 happy:
@@ -657,10 +646,10 @@ def import_vcard(vcard_file, workspace):
             sys.exit(1)
 
     payload = read_file(vcard_file)
-    # ~ if verbose:
+    # ~ if VERBOSE:
         # ~ print("VCARD FILE:\n%s" % payload)
     vcard = vobject.readOne(payload)
-    if verbose:
+    if VERBOSE:
         vcard.prettyPrint()
 
     ## firstname
@@ -849,7 +838,7 @@ def import_vcard(vcard_file, workspace):
 
     )
     payload = json.loads(payload)
-    if verbose:
+    if VERBOSE:
         print("NEW PERSON: %s" % payload)
     topic_id = write_request(url, payload, workspace)["id"]
     return(topic_id)
@@ -977,7 +966,7 @@ def main(args):
     ToDo:
     # change_password(user, password, 'new_pass')
     """
-    global verbose # set verboe mode
+    global VERBOSE # set verbose mode
     parser = argparse.ArgumentParser(
         description='This is a Python script \
         for DMX by Juergen Neumann <juergen@dmx.systems>. It is free \
@@ -1145,8 +1134,8 @@ def main(args):
         default=None
     )
     parser.add_argument(
-        '-v', '--verbose',
-        help='Enable verbose mode.',
+        '-v', '--VERBOSE',
+        help='Enable VERBOSE mode.',
         action='store_true',
         required=False,
         default=None
@@ -1192,18 +1181,17 @@ def main(args):
     arguments and then call a funtion (ideally named like argument) to do
     the computing.
     """
-    # enable verbose mode
-    if argsdict['verbose']:
-        verbose = True
+    # enable VERBOSE mode
+    if argsdict['VERBOSE']:
+        VERBOSE = True
     else:
-        verbose = False
+        VERBOSE = False
 
     # instance must be first, cause it overwrites the default setting from config
     if argsdict['config_properties']:
-        # ~ data = read_dmx_config(argsdict['config_properties'])
-        read_dmx_config(argsdict['config_properties'])
+        read_dmx_config_properties_file(argsdict['config_properties'])
     else:
-        read_config_file()
+        read_default_config_file()
 
     # login is next, as one may want to manually set who logs in
     if argsdict['login']:
@@ -1218,11 +1206,11 @@ def main(args):
         This function needs rewrinting! The logic of importing data from
         json file should be in a separate function.
         """
-        if verbose:
+        if VERBOSE:
             print("Importing json data from file %s" % (argsdict['file']))
         # ~ payload = import_payload(str(argsdict['file']))
         payload = read_file(str(argsdict['file']))
-        if verbose:
+        if VERBOSE:
             print("JSON DATA FROM FILE:\n%s" % payload)
         # ~ payload = json.load(payload)
         # ~ payload = json.dumps(payload)
@@ -1232,7 +1220,7 @@ def main(args):
         payload_len = len(payload)
         if argsdict['workspace']:
             if payload_len > 0:
-                if verbose:
+                if VERBOSE:
                     print("WORKSPACE: %s" % argsdict['workspace'])
                 data = send_data(payload, argsdict['workspace'])
                 print(data)
@@ -1242,7 +1230,7 @@ def main(args):
             print("ERROR! Missing workspace declaration.")
 
     if argsdict['import_vcard']:
-        if verbose:
+        if VERBOSE:
             print("Importing vcard data from file %s" % (argsdict['import_vcard']))
         if argsdict['workspace']:
             data = import_vcard(argsdict['import_vcard'], argsdict['workspace'])
@@ -1292,7 +1280,7 @@ def main(args):
     if argsdict['workspace'] and (argsdict['ws_type']) and not argsdict['membership']:
         # Does not work with 'private' for now!
         if argsdict['ws_type'] in ["confidential", "collaborative", "public", "common"]:
-            if verbose:
+            if VERBOSE:
                 print("Creating new %s workspace %s" %
                       (argsdict['ws_type'], argsdict['workspace']))
             data = create_ws(argsdict['workspace'], argsdict['ws_type'])
