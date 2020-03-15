@@ -51,7 +51,8 @@ import urllib.error
 import http.cookiejar
 
 ## define global variables
-VERBOSE = False   # VERBOSE mode (True|False)
+VERBOSE = False     # VERBOSE mode (True|False)
+JSESSIONID = False  # the first result of get_session_id
 config = configparser.SafeConfigParser()
 
 
@@ -77,26 +78,28 @@ def read_default_config_file():
     # ~ config = configparser.SafeConfigParser()
     # config.read(DEFAULT_CONFIG)
     if os.path.isfile(config_file):
-        config.read(config_file)
         if VERBOSE:
-            print("CONFIG: %s" % config)
-        ###
-        ### Here we need to write the config data
-        ###
+            print("DEFAULT CONFIG FILE: reading file %s." % config_file)
+        config.read(config_file)
     else:
         print("ERROR! Config file %s not found." % config_file)
         sys.exit(1)
 
 
-def read_dmx_config_properties_file(file_name='config.prperties'):
+def read_dmx_config_properties_file(config_file='config.properties'):
     """
     Reads the configuration data from '/path/to/dmx/config.properties'
     and overwrites the config settings with new values.
     """
     dmx_params = {}
-    if os.access(file_name, os.R_OK):
-        with open(file_name) as f_in:
+    if os.access(config_file, os.R_OK):
+        if VERBOSE:
+            print("DMX CONFIG PROPERTIES: reading file %s." % config_file)
+        with open(config_file) as f_in:
             lines = [_f for _f in (line.rstrip() for line in f_in) if _f]
+    else:
+        print("ERROR! Could not read config file %s." % (config_file))
+        sys.exit(1)
     for ln in lines:
         if not ln[0] in ('', ' ', '#', ';'):
             try:
@@ -118,10 +121,9 @@ def read_dmx_config_properties_file(file_name='config.prperties'):
 
     for mandatory in ['org.osgi.service.http.port', 'dmx.security.initial_admin_password']:
         if mandatory not in list(dmx_params.keys()):
-            print("ERROR! Could not read config file %s." % file_name)
+            print("ERROR! Could not read %s in config file %s." % (mandatory, config_file))
             sys.exit(1)
-    if VERBOSE:
-        print("CONFIG: %s" % config)
+    return
 
 
 def check_payload(payload):
@@ -132,12 +134,6 @@ def check_payload(payload):
     if VERBOSE:
         print("CHECK_PAYLOAD: %s" % payload)
         print("PAYLOAD TYPE = %s" % type(payload))
-    # ~ if isinstance(payload, str):
-        # ~ payload=json.loads(payload)
-        # ~ if VERBOSE:
-            # ~ print("Retyped payload to 'dict': %s" % payload)
-    # ~ return(payload)
-    ## make sure payload is a dict before we send it
     ## Test if the payload is a valid json object and get it sorted.
     try:
         payload = json.loads(json.dumps(payload, indent=3, sort_keys=True))
@@ -151,7 +147,7 @@ def check_payload(payload):
         return(payload)
 
 
-def read_file(filename, default="payload.file"):
+def read_file(filename):
     """
     Here we open the file and read the content.
     """
@@ -214,9 +210,10 @@ def get_session_id():
     """
     Creates an initial session and returns the session id.
     """
-    ## test if the local variable jsessiond exists
-    ## HINT: it checks for the string, so then var name must be quoted
-    if 'jsessionid' not in locals():
+    global JSESSIONID
+    if not JSESSIONID:
+        if VERBOSE:
+            print("GET_SESSION_ID: get new id")
         server = config.get('Connection', 'server')
         port = config.get('Connection', 'port')
         url = 'http://%s:%s/core/topic/0' % (server, port)
@@ -232,8 +229,10 @@ def get_session_id():
         else:
             for c in cj:
                 if c.name == "JSESSIONID":
-                    jsessionid = c.value
-    return(jsessionid)
+                    JSESSIONID = c.value
+        if VERBOSE:
+            print("JSESSIONID: %s" % JSESSIONID)
+    return(JSESSIONID)
 
 
 def read_request(url):
@@ -425,7 +424,6 @@ def create_topicmap(tm_name, tm_type='dmx.topicmaps.topicmap', workspace='DMX'):
         print("ERROR! Map '%s' exists." % tm_name)
         sys.exit(1)
     else:
-        # url = ('topicmap?name="%s"&topicmap_type_uri="%s"&private=false' % (tm_name.replace(' ', '%20'), tm_type))
         url = ('topicmap?name=%s&topicmap_type_uri=%s' % (tm_name.replace(' ', '%20'), tm_type))
         # for the moment, this requires an empty json string exactly like this
         data = {"": ""}
@@ -713,7 +711,6 @@ def import_vcard(vcard_file, workspace):
         note = vcard.note.value
     except:
         note = ''
-        pass
 
     ## address ##
     ## home
@@ -966,7 +963,8 @@ def main(args):
     ToDo:
     # change_password(user, password, 'new_pass')
     """
-    global VERBOSE # set verbose mode
+    global VERBOSE # verbose mode (True|False)
+
     parser = argparse.ArgumentParser(
         description='This is a Python script \
         for DMX by Juergen Neumann <juergen@dmx.systems>. It is free \
@@ -1207,14 +1205,12 @@ def main(args):
         json file should be in a separate function.
         """
         if VERBOSE:
-            print("Importing json data from file %s" % (argsdict['file']))
+            print("ARGSDICT FILE: Importing json data from file %s" % (argsdict['file']))
         # ~ payload = import_payload(str(argsdict['file']))
         payload = read_file(str(argsdict['file']))
         if VERBOSE:
             print("JSON DATA FROM FILE:\n%s" % payload)
-        # ~ payload = json.load(payload)
-        # ~ payload = json.dumps(payload)
-        payload = payload.replace('\n', '')
+        # payload = payload.replace('\n', '')
         payload = json.loads(payload)
         payload = check_payload(payload)
         payload_len = len(payload)
@@ -1355,7 +1351,7 @@ if __name__ == '__main__':
     # import sys
     ## debug
     # print(sys.version_info)
-    if (sys.version_info < (3, 0)):
+    if sys.version_info < (3, 0):
         print('ERROR! This program requires python version 3 or highter.')
         sys.exit(1)
     else:
