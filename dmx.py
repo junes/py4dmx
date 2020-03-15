@@ -105,7 +105,7 @@ def read_dmx_config_properties_file(config_file='config.properties'):
             try:
                 key, val = ln.strip().replace(" ", "").split('=', 1)
             except ValueError:
-                print("INFO: No value found for %s in %s" % (key, file_name))
+                print("INFO: No value found for %s in %s" % (key, config_file))
             else:
                 dmx_params[key.lower()] = val
 
