@@ -663,7 +663,11 @@ def import_vcard(vcard_file, workspace):
             # Error handling
             print(err)
             print('Please install module python3-vobject')
-            sys.exit(1)
+            sys.exit(0)
+        except ImportError as err:
+            print(err)
+            print('Please install module python3-vobject')
+            sys.exit(0)
 
     payload = read_file(vcard_file)
     # ~ if VERBOSE:
