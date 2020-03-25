@@ -955,8 +955,7 @@ def delete_topic(topic_id):
     ### Still needs to be adopted to make use of write_request
     ###
     jsessionid = get_session_id()
-    url = str(host_url()) + ('/core/topic/%s' %
-           (server, port, topic_id))
+    url = str(host_url()) + ('core/topic/%s' % topic_id)
     req = urllib.request.Request(url)
     req.add_header("Cookie", "JSESSIONID=%s" % jsessionid)
     req.add_header("Content-Type", "application/json")
