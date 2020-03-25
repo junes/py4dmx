@@ -659,11 +659,11 @@ def import_vcard(vcard_file, workspace):
     else:
         try:
             import vobject
-        except ModuleNotFoundError as err:
-            # Error handling
-            print(err)
-            print('Please install module python3-vobject')
-            sys.exit(0)
+        # ~ except ModuleNotFoundError as err:
+            # ~ # Error handling
+            # ~ print(err)
+            # ~ print('Please install module python3-vobject')
+            # ~ sys.exit(0)
         except ImportError as err:
             print(err)
             print('Please install module python3-vobject')
