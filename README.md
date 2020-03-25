@@ -27,7 +27,7 @@ Some examples:
  * `dmx.py -s -l -u "myusername" -p "mypassword"`  
    will login user "myusername" into DMX and output the current session id.
 
- * `dmx.py -l -u "myusername" -p "mypassword" -U https://dmx.example.com -s`
+ * `dmx.py -l -u "myusername" -p "mypassword" -U https://dmx.example.com -s`  
    will login user "myusername" into DMX instance at URL https://dmx.example.com
    and output the current session id.
 
