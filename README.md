@@ -20,11 +20,19 @@ Some examples:
    reads server setting and credentials from config file dmx.cfg to login and to return
    the current session id.
 
- * `dmx.py -C -u "myusername" -p "mypassword"`  
-   creates a new user with user name "myusername" and password "mypassword".
+ * `dmx.py -v -s`  
+   reads server setting and credentials from config file dmx.cfg to login and to return
+   the current session id with verbose output.
 
  * `dmx.py -s -l -u "myusername" -p "mypassword"`  
    will login user "myusername" into DMX and output the current session id.
+
+ * `dmx.py -l -u "myusername" -p "mypassword" -U https://dmx.example.com -s`
+   will login user "myusername" into DMX instance at URL https://dmx.example.com
+   and output the current session id.
+
+ * `dmx.py -C -u "myusername" -p "mypassword"`  
+   creates a new user with user name "myusername" and password "mypassword".
 
  * `dmx.py -c /etc/dmx/config.properties -s`  
    uses the config file /etc/dmx/config.properties to read server settings and 

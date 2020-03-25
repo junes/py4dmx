@@ -85,6 +85,9 @@ def read_default_config_file():
     else:
         print("ERROR! Config file %s not found." % config_file)
         sys.exit(1)
+    if VERBOSE:
+        for key in config.keys():
+            print("DEFAULT CONFIG FILE : %s : %s" % (key, config.items(key)))
 
 
 def read_dmx_config_properties_file(config_file='config.properties'):
@@ -215,7 +218,28 @@ def get_base64():
     return(base64string)
 
 
-def host_url():
+def host_url(URL=None):
+    global config
+    if URL != None:
+        host_url = urllib.parse.urlparse(URL)
+        if VERBOSE:
+            print("URL Protocol: %s" % host_url.scheme)
+            print("URL Server: %s" % host_url.hostname)
+            print("URL Port: %s" % host_url.port)
+            print("URL Path: %s" % host_url.path)
+        config.set('Connection', 'protocol', host_url.scheme)
+        config.set('Connection', 'server', host_url.hostname)
+        if host_url.scheme == 'https' and host_url.port == None:
+            config.set('Connection', 'port', '443')
+        elif host_url.scheme == 'http' and host_url.port == None:
+            config.set('Connection', 'port', '80')
+        else:
+            config.set('Connection', 'port', host_url.port)
+        if host_url.path == None:
+            config.set('Connection', 'path', '/')
+        else:
+            config.set('Connection', 'path', str(host_url.path.rstrip('/') + '/'))
+
     protocol = config.get('Connection', 'protocol')
     server = config.get('Connection', 'server')
     port = config.get('Connection', 'port')
@@ -1155,6 +1179,13 @@ def main(args):
         default=None
     )
     parser.add_argument(
+        '-U', '--URL',
+        type=str,
+        help='Provide the host URL.',
+        required=False,
+        default=None
+    )
+    parser.add_argument(
         '-v', '--VERBOSE',
         help='Enable VERBOSE mode.',
         action='store_true',
@@ -1208,11 +1239,20 @@ def main(args):
     else:
         VERBOSE = False
 
-    # instance must be first, cause it overwrites the default setting from config
+    # read config_properties must be first, cause it overwrites the default setting from config
     if argsdict['config_properties']:
         read_dmx_config_properties_file(argsdict['config_properties'])
     else:
         read_default_config_file()
+
+    # Now we set the URL !!! This may conflict with config_properties and default dmx.cfg
+    # we should add a bit more if then ...
+    if argsdict['URL']:
+        if (argsdict['URL'] != None):
+            data = host_url(argsdict['URL'])
+            print(data)
+        else:
+            print("ERROR! Missing username of new member or missing workspace name.")
 
     # login is next, as one may want to manually set who logs in
     if argsdict['login']:
