@@ -54,29 +54,30 @@ import http.cookiejar
 VERBOSE = False     # VERBOSE mode (True|False)
 JSESSIONID = False  # the first result of get_session_id
 config = configparser.SafeConfigParser()
+# ~ config = configparser.ConfigParser(allow_no_value=True)
 
 
 def read_default_config_file():
     """
-    Put this content in your dmx.cfg file:
-
+    Reads the config parameter from file ./dmx.cfg
+    """
+    ## if parameter is empty or missing, use these parameters
+    sample_config = """
     [Credentials]
     authname = admin
     password =
 
     [Connection]
+    protocol = http
     server = localhost
     port = 8080
+    path = /
     workspace = DMX
     """
-    # ~ global config
-
+    config.read_string(sample_config)
     script_dir = os.path.dirname(__file__) #<-- absolute dir the script is in
     config_file_name = 'dmx.cfg'
     config_file = os.path.join(script_dir, config_file_name)
-    ## if empty or missing, use these parameters
-    # ~ config = configparser.SafeConfigParser()
-    # config.read(DEFAULT_CONFIG)
     if os.path.isfile(config_file):
         if VERBOSE:
             print("DEFAULT CONFIG FILE: reading file %s." % config_file)
@@ -111,6 +112,14 @@ def read_dmx_config_properties_file(config_file='config.properties'):
 
     port = dmx_params['org.osgi.service.http.port']
     password = dmx_params['dmx.security.initial_admin_password']
+    # ~ ## the following param are not used ATM, because when config.properties
+    # ~ ## are read, this usually happens on localhost only
+    # ~ host_url = urllib.parse.urlparse(dmx_params['dmx.host.url'])
+    # ~ if VERBOSE:
+        # ~ print("Protocol: %s" % host_url.scheme)
+        # ~ print("Server: %s" % host_url.hostname)
+        # ~ print("Port: %s" % host_url.port)
+        # ~ print("Path: %s" % host_url.path)
     config.add_section('Credentials')
     config.set('Credentials', 'authname', 'admin') # usualy the admin user
     config.set('Credentials', 'password', password) # usualy the admin password
@@ -206,6 +215,18 @@ def get_base64():
     return(base64string)
 
 
+def host_url():
+    protocol = config.get('Connection', 'protocol')
+    server = config.get('Connection', 'server')
+    port = config.get('Connection', 'port')
+    path = config.get('Connection', 'path')
+    # ~ host_url = '%s://%s:%s%s' % (protocol, server, port, path.rstrip('/'))
+    host_url = '%s://%s:%s%s' % (protocol, server, port, path)
+    if VERBOSE:
+        print('HOST_URL : %s' % host_url)
+    return(host_url)
+
+
 def get_session_id():
     """
     Creates an initial session and returns the session id.
@@ -214,9 +235,13 @@ def get_session_id():
     if not JSESSIONID:
         if VERBOSE:
             print("GET_SESSION_ID: get new id")
+        protocol = config.get('Connection', 'protocol')
         server = config.get('Connection', 'server')
         port = config.get('Connection', 'port')
-        url = 'http://%s:%s/core/topic/0' % (server, port)
+        path = config.get('Connection', 'path')
+        url = str(host_url()) + 'core/topic/0'
+        if VERBOSE:
+            print('URL : %s' % url)
         req = urllib.request.Request(url)
         req.add_header("Authorization", "Basic %s" % get_base64())
         req.add_header("Content-Type", "application/json")
@@ -239,10 +264,9 @@ def read_request(url):
     """
     Reads the data from a given URL.
     """
-    server = config.get('Connection', 'server')
-    port = config.get('Connection', 'port')
-    url = 'http://%s:%s/%s' % (server, port, url)
     jsessionid = get_session_id()
+    get_session_id()
+    url = str(host_url()) + url
     if VERBOSE:
         print("Read Data %s" % url)
     req = urllib.request.Request(url)
@@ -276,10 +300,9 @@ def write_request(url, payload=None, workspace='DMX', method='POST', expect_json
     """
     ### The wsid is used for the Cockie here!
     ### Not for the payload - this might be confusing
-    server = config.get('Connection', 'server')
-    port = config.get('Connection', 'port')
-    url = 'http://%s:%s/%s' % (server, port, url)
     jsessionid = get_session_id()
+    get_session_id()
+    url = str(host_url()) + url
     if VERBOSE:
         print("Write Data %s" % url)
     wsid = get_ws_id(workspace)
@@ -473,10 +496,9 @@ def change_password(dm_user, dm_old_pass, dm_new_pass):
     print("Change Password WS ID = %s" % wsid)
 
     # change password
-    server = config.get('Connection', 'server')
-    port = config.get('Connection', 'port')
     jsessionid = get_session_id()
-    url = 'http://%s:%s/core/topic/%s' % (server, port, topic_id)
+    get_session_id()
+    url = host_url() + ('/core/topic/%s' % (topic_id))
     req = urllib.request.Request(url)
     req.add_header("Cookie", "JSESSIONID=%s" % jsessionid)
     req.add_header("Content-Type", "application/json")
@@ -932,10 +954,8 @@ def delete_topic(topic_id):
     ###
     ### Still needs to be adopted to make use of write_request
     ###
-    server = config.get('Connection', 'server')
-    port = config.get('Connection', 'port')
     jsessionid = get_session_id()
-    url = ('http://%s:%s/core/topic/%s' %
+    url = str(host_url()) + ('/core/topic/%s' %
            (server, port, topic_id))
     req = urllib.request.Request(url)
     req.add_header("Cookie", "JSESSIONID=%s" % jsessionid)

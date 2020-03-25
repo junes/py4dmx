@@ -1,8 +1,26 @@
+##
+## dmx.cfg - config file for dmy.py
+##
+
+
 [Credentials]
+
+## username for login (default: admin)
 authname = admin
+
+## password for login (default: [empty])
 password =
 
+
 [Connection]
+
+## host url to reach the server
+## ${protocol}://${server}:${port}${path}
+## (default: http://localhost:8080/)
+protocol = http
 server = localhost
 port = 8080
+path = /
+
+## preset value for workspace cookie (default: DMX)
 workspace = DMX
