@@ -36,9 +36,18 @@ user_login () {
         echo "INFO: Login new user '${USER}' with password '${PASS}'."
     fi
     RESULT="$( ${PY4DMX} ${VERBOSE} -s -u "${USER}" -p "${PASS}" )"
+    JSESSIONID=${RESULT}
     echo "${RESULT}"
 }
 
+test_session_id () {
+    echo -e "--\n${FUNCNAME[0]}:"
+    if [ ${VERBOSE} ]; then
+        echo "INFO: Login with existing sessionid ${JSESSIONID}."
+    fi
+    RESULT="$( ${PY4DMX} ${VERBOSE} -J ${JSESSIONID} -s )"
+    echo "${RESULT}"
+}
 
 create_workspace () {
     echo -e "--\n${FUNCNAME[0]}:"
@@ -110,6 +119,7 @@ import_vcard () {
 echo -e "\nRun Tests:"
 create_user
 user_login
+test_session_id
 create_workspace
 create_member
 create_note
