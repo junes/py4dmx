@@ -36,7 +36,7 @@ user_login () {
         echo "INFO: Login new user '${USER}' with password '${PASS}'."
     fi
     RESULT="$( ${PY4DMX} ${VERBOSE} -s -u "${USER}" -p "${PASS}" )"
-    JSESSIONID=${RESULT}
+    JSESSIONID="$( echo ${RESULT} | tail -n1 )"
     echo "${RESULT}"
 }
 
