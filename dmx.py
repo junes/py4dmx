@@ -234,7 +234,7 @@ def host_url(URL=None):
         elif host_url.scheme == 'http' and host_url.port == None:
             config.set('Connection', 'port', '80')
         else:
-            config.set('Connection', 'port', host_url.port)
+            config.set('Connection', 'port', str(host_url.port))
         if host_url.path == None:
             config.set('Connection', 'path', '/')
         else:
@@ -258,7 +258,9 @@ def get_session_id():
     global JSESSIONID
     if not JSESSIONID:
         if VERBOSE:
-            print("GET_SESSION_ID: get new id")
+            print("GET_SESSION_ID: get new id for user %s" %
+                config.get('Credentials', 'authname')
+            )
         protocol = config.get('Connection', 'protocol')
         server = config.get('Connection', 'server')
         port = config.get('Connection', 'port')
@@ -281,6 +283,10 @@ def get_session_id():
                     JSESSIONID = c.value
         if VERBOSE:
             print("JSESSIONID: %s" % JSESSIONID)
+    else:
+        if VERBOSE:
+            print("GET_SESSION_ID: use existing id")
+
     return(JSESSIONID)
 
 
@@ -1010,7 +1016,8 @@ def main(args):
     ToDo:
     # change_password(user, password, 'new_pass')
     """
-    global VERBOSE # verbose mode (True|False)
+    global VERBOSE    # verbose mode (True|False)
+    global JSESSIONID # can be entered via command line
 
     parser = argparse.ArgumentParser(
         description='This is a Python script \
@@ -1065,6 +1072,13 @@ def main(args):
         '-i', '--topic_id',
         type=str,
         help='Provide a numerical topic id.',
+        required=False,
+        default=None
+    )
+    parser.add_argument(
+        '-J', '--JSESSIONID',
+        type=str,
+        help='Provide an existing JSESSIONID to authenticate. (Do not login again.)',
         required=False,
         default=None
     )
@@ -1239,11 +1253,15 @@ def main(args):
     else:
         VERBOSE = False
 
-    # read config_properties must be first, cause it overwrites the default setting from config
+    # read config_properties must be first, cause it set the default setting for config
     if argsdict['config_properties']:
         read_dmx_config_properties_file(argsdict['config_properties'])
     else:
         read_default_config_file()
+
+    # if a JESSIONID is entered via command line, then use it.
+    if argsdict['JSESSIONID']:
+        JSESSIONID = (argsdict['JSESSIONID'])
 
     # Now we set the URL !!! This may conflict with config_properties and default dmx.cfg
     # we should add a bit more if then ...
