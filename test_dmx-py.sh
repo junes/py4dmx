@@ -18,6 +18,8 @@ WORKSPACE="WS_${NUNC}"
 WORKSPACE_TYPE='collaborative'
 TOPICMAP="MAP_${NUNC}"
 NOTE_FILE='./note_example.json'
+NOTE_TITLE='TO BE DELELTED'
+NOTE_BODY='foobar barfoo'
 PERSON_FILE='./person_example.json'
 VCARD_FILE='./person_example.vcf'
 
@@ -36,12 +38,12 @@ user_login () {
         echo "INFO: Login new user '${USER}' with password '${PASS}'."
     fi
     RESULT="$( ${PY4DMX} ${VERBOSE} -s -u "${USER}" -p "${PASS}" )"
-    JSESSIONID="$( echo ${RESULT} | tail -n1 )"
     echo "${RESULT}"
 }
 
 test_session_id () {
     echo -e "--\n${FUNCNAME[0]}:"
+    JSESSIONID="$( user_login | tail -n1 )"
     if [ ${VERBOSE} ]; then
         echo "INFO: Login with existing sessionid ${JSESSIONID}."
     fi
@@ -68,7 +70,7 @@ create_member () {
     echo "${RESULT}"
 }
 
-create_note () {
+create_note_from_file () {
     echo -e "--\n${FUNCNAME[0]}:"
     if [ ${VERBOSE} ]; then
         echo "INFO: Creating new note ${NOTE_FILE} as user '${USER}' in workspace '${WORKSPACE}'."
@@ -78,7 +80,7 @@ create_note () {
     echo "${RESULT}"
 }
 
-create_person () {
+create_person_from_file () {
     echo -e "--\n${FUNCNAME[0]}:"
     if [ ${VERBOSE} ]; then
         echo "INFO: Creating new person topic ${PERSON_FILE} as user '${USER}' in workspace '${WORKSPACE}'."
@@ -106,6 +108,27 @@ reveal_topic () {
     RESULT="$( ${PY4DMX} ${VERBOSE} -l -u ${USER} -p ${PASS} -R -i ${NOTE_ID} -o ${TOPICMAP_ID} -x 150 -y 150 -P True -w ${WORKSPACE} )"
     echo "${RESULT}"
 }
+
+create_note_from_cmd () {
+    echo -e "--\n${FUNCNAME[0]}:"
+    if [ ${VERBOSE} ]; then
+        echo "INFO: Creating new note '${NOTE_TITLE}' with content '${NOTE_BODY}' as user '${USER}' in workspace '${WORKSPACE}'."
+    fi
+    RESULT="$( ${PY4DMX} ${VERBOSE} -l -u "${USER}" -p "${PASS}" -N "${NOTE_TITLE}" -B "${NOTE_BODY}" -w "${WORKSPACE}" )"
+    echo "${RESULT}"
+}
+
+delete_topic () {
+    echo -e "--\n${FUNCNAME[0]}:"
+    NOTE_ID="$( create_note_from_cmd | tail -n1 )"
+    if [ ${VERBOSE} ]; then
+        echo "INFO: Creating a new note and delete it as user '${USER}' in workspace '${WORKSPACE}'."
+    fi
+    RESULT="$( ${PY4DMX} ${VERBOSE} -l -u "${USER}" -p "${PASS}" -d ${NOTE_ID} -Y )"
+    echo "${RESULT}"
+}
+
+
 import_vcard () {
     echo -e "--\n${FUNCNAME[0]}:"
     if [ ${VERBOSE} ]; then
@@ -122,8 +145,10 @@ user_login
 test_session_id
 create_workspace
 create_member
-create_note
-create_person
+create_note_from_file
+create_person_from_file
 create_topicmap
 reveal_topic
+create_note_from_cmd
+delete_topic
 import_vcard

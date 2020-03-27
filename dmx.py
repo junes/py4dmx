@@ -295,7 +295,7 @@ def read_request(url):
     Reads the data from a given URL.
     """
     jsessionid = get_session_id()
-    get_session_id()
+    # ~ get_session_id()
     url = str(host_url()) + url
     if VERBOSE:
         print("Read Data %s" % url)
@@ -331,10 +331,10 @@ def write_request(url, payload=None, workspace='DMX', method='POST', expect_json
     ### The wsid is used for the Cockie here!
     ### Not for the payload - this might be confusing
     jsessionid = get_session_id()
-    get_session_id()
+    # ~ get_session_id()
     url = str(host_url()) + url
     if VERBOSE:
-        print("Write Data %s" % url)
+        print("Write Data with method %s to %s" % (method, url))
     wsid = get_ws_id(workspace)
     req = urllib.request.Request(url)
     req.add_header("Cookie", "JSESSIONID=%s; dmx_workspace_id=%s" % (jsessionid, wsid))
@@ -408,8 +408,8 @@ def write_request(url, payload=None, workspace='DMX', method='POST', expect_json
                 pretty_print(response)
             return(response)
     else:
-        # This can be deleted, right?
-        # if no payload
+        ## This is relevant e.g. for 'delete', when no data is sent, but answer is json
+        ## if no payload
         if VERBOSE:
             print('Got no payload. Got no expectation on response.')
         try:
@@ -434,7 +434,10 @@ def write_request(url, payload=None, workspace='DMX', method='POST', expect_json
                     print("RESPONSE is JSON")
                     print("RESPONSE TYPE = %s" % type(response))
                     pretty_print(response)
-                return(response)
+                if expect_json:
+                    return(response)
+                else:
+                    return("OK")
 
 
 def create_user(dm_user='testuser', dm_pass='testpass'):
@@ -988,18 +991,18 @@ def delete_topic(topic_id):
     ###
     ### Still needs to be adopted to make use of write_request
     ###
-    jsessionid = get_session_id()
-    url = str(host_url()) + ('core/topic/%s' % topic_id)
-    req = urllib.request.Request(url)
-    req.add_header("Cookie", "JSESSIONID=%s" % jsessionid)
-    req.add_header("Content-Type", "application/json")
-    req.get_method = lambda: 'DELETE'
-    try:
-        response = (json.loads(urllib.request.urlopen(req).read()))
-    except urllib.error.HTTPError as e:
-        print('Delete Topic Error: '+str(e))
-    else:
-        return(response)
+    ### write_request(url, payload=None, workspace='DMX', method='POST', expect_json=True):
+    # ~ jsessionid = get_session_id()
+    # ~ url = str(host_url()) + ('core/topic/%s' % topic_id)
+    # ~ req = urllib.request.Request(url)
+    # ~ req.add_header("Cookie", "JSESSIONID=%s" % jsessionid)
+    # ~ req.add_header("Content-Type", "application/json")
+    # ~ req.get_method = lambda: 'DELETE'
+    if VERBOSE:
+        print("DELETE TOPIC : deleting topic with id '%s'" % topic_id)
+    url = ('core/topic/%s' % topic_id)
+    response = write_request(url, method='DELETE', expect_json=False)
+    return(response)
 
 
 def pretty_print(data):
@@ -1236,7 +1239,13 @@ def main(args):
         required=False,
         default=None
     )
-
+    parser.add_argument(
+        '-Y', '--yes',
+        help='Imply "yes" to any question (for script mode).',
+        action='store_true',
+        required=False,
+        default=None
+    )
 
     args = parser.parse_args()
     argsdict = vars(args)
@@ -1380,11 +1389,18 @@ def main(args):
 
     if argsdict['delete_topic']:
         data = get_topic(argsdict['delete_topic'])
-        if query_yes_no("Are you sure you want to delete topic id %s with value \"%s\"" %
-                        (argsdict['delete_topic'], data['value'])):
+        if (not (argsdict['yes']) and
+            query_yes_no(
+                "Are you sure you want to delete topic id %s with value \"%s\"" %
+                (argsdict['delete_topic'], data['value'])
+            )
+        ):
             print('yes')
             data = delete_topic(argsdict['delete_topic'])
-            pretty_print(data)
+            print(data)
+        elif (argsdict['yes']):
+            data = delete_topic(argsdict['delete_topic'])
+            print(data)
         else:
             print('no')
 
