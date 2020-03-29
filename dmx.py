@@ -323,6 +323,22 @@ def read_request(url):
             pretty_print(response)
         return(response)
 
+def send_post(url, workspace):
+    jsessionid = get_session_id()
+    wsid = get_ws_id(workspace)
+    print("Sending POST to '%s' with Session %s in Workspace %s" % (url, jsessionid, wsid))
+    url = str(host_url()) + url
+    req = urllib.request.Request(url)
+    req.add_header("Cookie", "JSESSIONID=%s; dmx_workspace_id=%s" % (jsessionid, wsid))
+    req.add_header("Content-Type", "application/json")
+    req.method = 'POST'
+    try:
+        response = (json.loads(urllib.request.urlopen(req).read().decode('UTF-8')))
+        pretty_print(response)
+    except urllib.error.HTTPError as e:
+        print('Trigger Endpoint Error: '+str(e))
+    except ValueError:
+        print('WARNING! No JSON Object found. Got empty response.')
 
 def write_request(url, payload=None, workspace='DMX', method='POST', expect_json=True):
     """
@@ -1245,6 +1261,12 @@ def main(args):
         action='store_true',
         required=False,
         default=None
+    ),
+    parser.add_argument(
+        '-SP', '--send_post',
+        help='Sends simple POST request to given resource endpoint. \
+            Use in conjunction with -w for e.g. triggering imports.',
+        default=None
     )
 
     args = parser.parse_args()
@@ -1279,7 +1301,7 @@ def main(args):
             data = host_url(argsdict['URL'])
             print(data)
         else:
-            print("ERROR! Missing username of new member or missing workspace name.")
+            print("ERROR! Missing URL")
 
     # login is next, as one may want to manually set who logs in
     if argsdict['login']:
@@ -1287,7 +1309,7 @@ def main(args):
             config.set('Credentials', 'authname', argsdict['user']) # usualy the admin password
             config.set('Credentials', 'password', argsdict['password']) # usualy the admin password
         else:
-            print("ERROR! Missing username or password.")
+            print("ERROR! Missing username and/or password.")
 
     if argsdict['file']:
         """
@@ -1361,6 +1383,10 @@ def main(args):
 
     if argsdict['get_topic']:
         data = get_topic(argsdict['get_topic'])
+        pretty_print(data)
+
+    if argsdict['send_post']:
+        data = send_post(argsdict['send_post'], argsdict['workspace'])
         pretty_print(data)
 
     if argsdict['workspace'] and (argsdict['ws_type']) and not argsdict['membership']:
