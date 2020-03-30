@@ -52,7 +52,7 @@ import http.cookiejar
 
 ## define global variables
 VERBOSE = False     # VERBOSE mode (True|False)
-JSESSIONID = False  # the first result of get_session_id
+JSESSIONID = None   # the first result of get_session_id
 config = configparser.SafeConfigParser()
 # ~ config = configparser.ConfigParser(allow_no_value=True)
 
@@ -207,6 +207,31 @@ def query_yes_no(question, default="no"):
                              "(or 'y' or 'n').\n")
 
 
+def is_json(data, expect_json=True):
+    """
+    This function returns a JSON formatted string, if possible.
+    """
+    try:
+        response = json.loads(data)
+    except:
+        if VERBOSE:
+            print("RESPONSE is not JSON")
+            print("RESPONSE TYPE = %s" % type(response))
+            print('RESPONSE is "OK".')
+        return("OK")
+    else:
+        if VERBOSE:
+            print("RESPONSE is JSON")
+            print("RESPONSE TYPE = %s" % type(response))
+            pretty_print(response)
+        if expect_json:
+            return(response)
+        else:
+            if VERBOSE:
+                print('RESPONSE is "OK".')
+            return("OK")
+
+
 def get_base64():
     """
     This function returns the authentication string for the user against DM
@@ -218,7 +243,10 @@ def get_base64():
     return(base64string)
 
 
-def host_url(URL=None):
+def get_host_url(URL=None):
+    """
+    This function returns the host_url string.
+    """
     global config
     if URL != None:
         host_url = urllib.parse.urlparse(URL)
@@ -248,45 +276,75 @@ def host_url(URL=None):
     host_url = '%s://%s:%s%s' % (protocol, server, port, path)
     if VERBOSE:
         print('HOST_URL : %s' % host_url)
-    return(host_url)
+    return(str(host_url))
+
+
+def get_response(url='', payload=None, wsid=0, method='GET', expect_json=True):
+    """
+    Sends data to a given URL.
+    """
+    global JSESSIONID
+    # ~ config = ConfigHandler.read_default_config_file(VERBOSE=True)
+    ### The wsid is used for the Cockie here!
+    ### Not for the payload - this might be confusing
+    host_url = get_host_url()
+    if VERBOSE:
+        print("GET RESPONSE : Calling %s with method %s" % (url, method))
+        print("GET RESPONSE : JSESSIONID = %s, wsid = %s" % (JSESSIONID, wsid))
+    # wsid = get_ws_id(workspace)
+    if JSESSIONID is None:
+        if VERBOSE:
+            print('Getting new JSESSIONID')
+        req = urllib.request.Request(host_url)
+        req.add_header("Authorization", "Basic %s" % get_base64())
+        req.add_header("Content-Type", "application/json")
+        if method is not 'GET':
+            req.add_header("Cookie", "dmx_workspace_id=%s" % (wsid))
+        cj = http.cookiejar.CookieJar()
+        opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj))
+        try:
+            opener.open(host_url)
+        except urllib.request.HTTPError as e:
+            print('Get Session ID Error: '+str(e))
+        else:
+            for c in cj:
+                # ~ if VERBOSE:
+                    # ~ print("COOKIE %s=%s" % (c.name, c.value))
+                if c.name == "JSESSIONID":
+                    JSESSIONID = c.value
+        if VERBOSE:
+            print("JSESSIONID : new = %s" % JSESSIONID)
+    # ~ if VERBOSE:
+        # ~ print("JSESSIONID : old = %s" % JSESSIONID)
+    url = (host_url + str(url)).encode('utf-8').decode('utf-8')
+    if VERBOSE:
+        print("url type is %s" % type(url))
+    req = urllib.request.Request(url)
+    if method is 'GET':
+        if VERBOSE:
+            print("JSESSIONID = %s, method = %s" % (JSESSIONID, method))
+        req.add_header("Cookie", "JSESSIONID=%s" % JSESSIONID)
+    else:
+        req.add_header("Cookie", "JSESSIONID=%s; dmx_workspace_id=%s" % (JSESSIONID, wsid))
+    req.add_header("Content-Type", "application/json")
+    req.get_method = lambda: method
+    try:
+        response = urllib.request.urlopen(req).read()
+    except urllib.error.HTTPError as e:
+        print('Request Data Error: '+str(e))
+    else:
+        if VERBOSE:
+            print("RESPONSE TYPE = %s, len = %s" % (type(response), len(response)))
+            # pretty_print(response)
+            print(response)
+    return(response)
 
 
 def get_session_id():
     """
     Creates an initial session and returns the session id.
     """
-    global JSESSIONID
-    if not JSESSIONID:
-        if VERBOSE:
-            print("GET_SESSION_ID: get new id for user %s" %
-                config.get('Credentials', 'authname')
-            )
-        protocol = config.get('Connection', 'protocol')
-        server = config.get('Connection', 'server')
-        port = config.get('Connection', 'port')
-        path = config.get('Connection', 'path')
-        url = str(host_url()) + 'core/topic/0'
-        if VERBOSE:
-            print('URL : %s' % url)
-        req = urllib.request.Request(url)
-        req.add_header("Authorization", "Basic %s" % get_base64())
-        req.add_header("Content-Type", "application/json")
-        cj = http.cookiejar.CookieJar()
-        opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj))
-        try:
-            test_url = opener.open(req)
-        except urllib.request.HTTPError as e:
-            print('Get Session ID Error: '+str(e))
-        else:
-            for c in cj:
-                if c.name == "JSESSIONID":
-                    JSESSIONID = c.value
-        if VERBOSE:
-            print("JSESSIONID: %s" % JSESSIONID)
-    else:
-        if VERBOSE:
-            print("GET_SESSION_ID: use existing id")
-
+    get_response()
     return(JSESSIONID)
 
 
@@ -294,150 +352,59 @@ def read_request(url):
     """
     Reads the data from a given URL.
     """
-    jsessionid = get_session_id()
-    # ~ get_session_id()
-    url = str(host_url()) + url
+    # ~ url = url.encode('utf-8').decode('utf-8')
     if VERBOSE:
-        print("Read Data %s" % url)
-    req = urllib.request.Request(url)
-    req.add_header("Cookie", "JSESSIONID=%s" % jsessionid)
-    req.add_header("Content-Type", "application/json")
-    try:
-        response = (json.loads(urllib.request.urlopen(req).read().decode('UTF-8')))
-    except urllib.error.HTTPError as e:
-        print('Read Data Error: '+str(e))
-    except ValueError:
-        print('WARNING! No JSON Object found.')
-        try:
-            response = urllib.request.urlopen(req).read()
-        except urllib.error.HTTPError as e:
-            print('Read Data Error: '+str(e))
-        else:
-            if VERBOSE and response:
-                print("RESPONSE TYPE = %s" % type(response))
-                # ~ print(response)
-            return(response)
-    else:
-        if VERBOSE:
-            print("RESPONSE TYPE = %s" % type(response))
-            pretty_print(response)
-        return(response)
+        print("READ REQUEST : url = %s" % url)
+    request = get_response(url)
+    if VERBOSE:
+        print("READ REQUEST : request = %s" % request)
+    response = is_json(request, expect_json=True)
+    return(response)
 
 
 def write_request(url, payload=None, workspace='DMX', method='POST', expect_json=True):
     """
     Writes the data to a given URL.
     """
-    ### The wsid is used for the Cockie here!
-    ### Not for the payload - this might be confusing
-    jsessionid = get_session_id()
-    # ~ get_session_id()
-    url = str(host_url()) + url
-    if VERBOSE:
-        print("Write Data with method %s to %s" % (method, url))
     wsid = get_ws_id(workspace)
-    req = urllib.request.Request(url)
-    req.add_header("Cookie", "JSESSIONID=%s; dmx_workspace_id=%s" % (jsessionid, wsid))
-    req.add_header("Content-Type", "application/json")
-    req.get_method = lambda: method
-    if payload:
-        payload = check_payload(payload)
-    if payload and expect_json:
-        if VERBOSE:
-            print('Sending with payload. Expecting JSON response.')
-        if payload == {"": ""}:
-            ## This needs fixing. It is a workarround to recevie empty JSON as
-            ## required in 'create_topicmap' function.
-            payload = {}
-        try:
-            response = (
-                json.loads(urllib.request.urlopen(
-                    req, (json.dumps(payload)).encode('UTF-8')
-                ).read().decode('UTF-8'))
-            )
-        except urllib.error.HTTPError as e:
-            print('Write Data Error: '+str(e))
-            json_error = {"id": "FAILED!"}
-            response = json.loads(json.dumps(json_error))
-            if VERBOSE:
-                print("RESPONSE: %s" % response)
-            return(response)
-        except json.decoder.JSONDecodeError as e:
-            print('JSON Decoder Error: '+str(e))
-        else:
-            if VERBOSE:
-                print("RESPONSE TYPE = %s" % type(response))
-                pretty_print(response)
-            return(response)
-    elif payload:
-        if VERBOSE:
-            print('Sending data with payload. Not expecting JSON response.')
-        if payload == {"": ""}:
-            ## This needs fixing. It is a workarround to recevie empty JSON as
-            ## required in 'create_topicmap' function.
-            payload = {}
-        try:
-            response = (
-                urllib.request.urlopen(
-                    req, (json.dumps(payload)).encode('UTF-8')
-                ).read().decode('UTF-8')
-            )
-            # ~ response = (urllib.request.urlopen(req, payload).read())
-        except urllib.error.HTTPError as e:
-            print('Write Data Error: '+str(e))
-        except json.decoder.JSONDecodeError as e:
-            print('JSON Decoder Error: '+str(e))
-        else:
-            if VERBOSE:
-                print("RESPONSE TYPE = %s" % type(response))
-                # ~ print(response)
-            return("OK")
-    elif expect_json:
-        if VERBOSE:
-            print('Sending data without payload. Expecting JSON response.')
-        try:
-            response = (json.loads(urllib.request.urlopen(req).read().decode('UTF-8')))
-        except urllib.error.HTTPError as e:
-            print('Write Data Error: '+str(e))
-        except json.decoder.JSONDecodeError as e:
-            print('JSON Decoder Error: '+str(e))
-        else:
-            response = json.loads(json.dumps(response))
-            if VERBOSE:
-                print("RESPONSE TYPE = %s" % type(response))
-                pretty_print(response)
-            return(response)
-    else:
-        ## This is relevant e.g. for 'delete', when no data is sent, but answer is json
-        ## if no payload
-        if VERBOSE:
-            print('Got no payload. Got no expectation on response.')
-        try:
-            ## response = (json.loads(urllib.request.urlopen(req).read()))
-            response = (urllib.request.urlopen(req).read().decode('UTF-8'))
-        except urllib.error.HTTPError as e:
-            print('Write Data Error: '+str(e))
-        except json.decoder.JSONDecodeError as e:
-            print('JSON Decoder Error: '+str(e))
-        else:
-            # is response json?
-            try:
-                response = json.loads(response)
-            except:
-                if VERBOSE:
-                    print("RESPONSE is not JSON")
-                    print("RESPONSE TYPE = %s" % type(response))
-                    # ~ print(response)
-                return("OK")
-            else:
-                if VERBOSE:
-                    print("RESPONSE is JSON")
-                    print("RESPONSE TYPE = %s" % type(response))
-                    pretty_print(response)
-                if expect_json:
-                    return(response)
-                else:
-                    return("OK")
+    if VERBOSE:
+        print("WRITE REQUEST : wsid = %s" % wsid)
+    request = get_response(url, payload, wsid, method, expect_json)
+    response = is_json(request, expect_json)
+    return(response)
+
+
+def get_ws_id(workspace):
+    """
+    This function gets the workspace ID for a workspace by its name.
+    It's much faster to get it by its uri, if present.
+    """
+    if VERBOSE:
+        print("GET_WS_ID: Searching Workspace ID for %s" % workspace)
+    url = ('core/topic?type_uri=dmx.workspaces.workspace_name'
+           '&query="%s"' % workspace.replace(' ', '%20'))
+    # find the workspace_name in the result
+    topics = read_request(url)["topics"]
+    for topic in topics:
+        # find the workspace_name in the result
+        if topic['typeUri'] == 'dmx.workspaces.workspace_name':
+            wsnameid = (topic['id'])
+            break
+    if VERBOSE:
+        print("WS NAME ID = %s" % wsnameid)
+    # ~ url = 'core/topic/0'
+    url = ('core/topic/%s/related_topics'
+           '?assoc_type_uri=dmx.core.composition&my_role_type_uri='
+           'dmx.core.child&others_role_type_uri=dmx.core.parent&'
+           'others_topic_type_uri=dmx.workspaces.workspace' %
+           str(wsnameid))
+
+    ## topic_id = read_request(url)[0]["id"]
+    # ~ topic_id = read_request(url)[0]["id"]
+    topic_id = read_request(url)
+    if VERBOSE:
+        print("WS ID = %s" % topic_id)
+    return(topic_id)
 
 
 def create_user(dm_user='testuser', dm_pass='testpass'):
@@ -531,7 +498,7 @@ def change_password(dm_user, dm_old_pass, dm_new_pass):
     # change password
     jsessionid = get_session_id()
     get_session_id()
-    url = host_url() + ('/core/topic/%s' % (topic_id))
+    url = get_host_url() + ('/core/topic/%s' % (topic_id))
     req = urllib.request.Request(url)
     req.add_header("Cookie", "JSESSIONID=%s" % jsessionid)
     req.add_header("Content-Type", "application/json")
@@ -556,35 +523,6 @@ def change_password(dm_user, dm_old_pass, dm_new_pass):
         print('Change Password Error: '+str(e))
     else:
         print(response)
-
-
-def get_ws_id(workspace):
-    """
-    This function gets the workspace ID for a workspace by its name.
-    It's much faster to get it by its uri, if present.
-    """
-    if VERBOSE:
-        print("GET_WS_ID: Searching Workspace ID for %s" % workspace)
-    url = ('core/topic?type_uri=dmx.workspaces.workspace_name'
-           '&query="%s"' % workspace.replace(' ', '%20'))
-    # find the workspace_name in the result
-    topics = read_request(url)["topics"]
-    for topic in topics:
-        # find the workspace_name in the result
-        if topic['typeUri'] == 'dmx.workspaces.workspace_name':
-            wsnameid = (topic['id'])
-            break
-    if VERBOSE:
-        print("WS NAME ID = %s" % wsnameid)
-    url = ('core/topic/%s/related_topics'
-           '?assoc_type_uri=dmx.core.composition&my_role_type_uri='
-           'dmx.core.child&others_role_type_uri=dmx.core.parent&'
-           'others_topic_type_uri=dmx.workspaces.workspace' %
-           str(wsnameid))
-    topic_id = read_request(url)[0]["id"]
-    if VERBOSE:
-        print("WS ID = %s" % topic_id)
-    return(topic_id)
 
 
 def create_ws(workspace, ws_type, uri=''):
@@ -1276,7 +1214,7 @@ def main(args):
     # we should add a bit more if then ...
     if argsdict['URL']:
         if (argsdict['URL'] != None):
-            data = host_url(argsdict['URL'])
+            data = get_host_url(argsdict['URL'])
             print(data)
         else:
             print("ERROR! Missing username of new member or missing workspace name.")
