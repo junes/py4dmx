@@ -378,7 +378,7 @@ def get_ws_id(workspace):
     It's much faster to get it by its uri, if present.
     """
     if VERBOSE:
-        print("GET_WS_ID: Searching Workspace ID for workspace %s" % workspace)
+        print("GET_WS_ID : Searching Workspace ID for workspace %s" % workspace)
     url = ('core/topic?type_uri=dmx.workspaces.workspace_name'
            '&query="%s"' % workspace.replace(' ', '%20'))
     ## find the workspace_name in the result
