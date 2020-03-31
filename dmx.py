@@ -80,7 +80,7 @@ def read_default_config_file():
     config_file = os.path.join(script_dir, config_file_name)
     if os.path.isfile(config_file):
         if VERBOSE:
-            print("DEFAULT CONFIG FILE: reading file %s." % config_file)
+            print("DEFAULT CONFIG FILE : reading file %s." % config_file)
         config.read(config_file)
     else:
         print("ERROR! Config file %s not found." % config_file)
@@ -115,14 +115,6 @@ def read_dmx_config_properties_file(config_file='config.properties'):
 
     port = dmx_params['org.osgi.service.http.port']
     password = dmx_params['dmx.security.initial_admin_password']
-    # ~ ## the following param are not used ATM, because when config.properties
-    # ~ ## are read, this usually happens on localhost only
-    # ~ host_url = urllib.parse.urlparse(dmx_params['dmx.host.url'])
-    # ~ if VERBOSE:
-        # ~ print("Protocol: %s" % host_url.scheme)
-        # ~ print("Server: %s" % host_url.hostname)
-        # ~ print("Port: %s" % host_url.port)
-        # ~ print("Path: %s" % host_url.path)
     config.add_section('Credentials')
     config.set('Credentials', 'authname', 'admin') # usualy the admin user
     config.set('Credentials', 'password', password) # usualy the admin password
@@ -138,7 +130,7 @@ def read_dmx_config_properties_file(config_file='config.properties'):
     return
 
 
-def check_payload(payload):
+def check_payload(payload={}):
     """
     This function checks the payload to be send to server and makes sure
     it is a valid json format.
@@ -146,6 +138,7 @@ def check_payload(payload):
     if VERBOSE:
         print("CHECK_PAYLOAD: %s" % payload)
         print("PAYLOAD TYPE = %s" % type(payload))
+        print("PAYLOAD LEN = %s" % len(payload))
     ## Test if the payload is a valid json object and get it sorted.
     try:
         payload = json.loads(json.dumps(payload, indent=3, sort_keys=True))
@@ -154,8 +147,8 @@ def check_payload(payload):
         sys.exit(1)
     else:
         if VERBOSE:
-            print("LenPayload: %s" % len(payload))
             pretty_print(payload)
+        payload = json.dumps(payload).encode('UTF-8')
         return(payload)
 
 
@@ -232,23 +225,24 @@ def is_json(data, expect_json=True):
             return("OK")
 
 
-def get_base64():
+def get_base_64():
     """
-    This function returns the authentication string for the user against DM
+    This function returns the authentication string for the user against DMX
     """
     authname = config.get('Credentials', 'authname') # usualy the admin user
     password = config.get('Credentials', 'password') # usualy the admin password
+    if VERBOSE:
+        print("GET BASE64 : authname = %s, password = %s" % (authname, password))
     authstring = bytes((str(authname + ':' + password)), 'UTF-8')
     base64string = (base64.b64encode(authstring)).decode('UTF-8')
+    if VERBOSE:
+        print("GET BASE64 : base64string = %s" % base64string)
     return(base64string)
 
 
-def get_host_url(URL=None):
-    """
-    This function returns the host_url string.
-    """
+def set_host_url(url):
     global config
-    if URL != None:
+    if url != None:
         host_url = urllib.parse.urlparse(URL)
         if VERBOSE:
             print("URL Protocol: %s" % host_url.scheme)
@@ -267,7 +261,13 @@ def get_host_url(URL=None):
             config.set('Connection', 'path', '/')
         else:
             config.set('Connection', 'path', str(host_url.path.rstrip('/') + '/'))
+        return
 
+
+def get_host_url():
+    """
+    This function returns the host_url string.
+    """
     protocol = config.get('Connection', 'protocol')
     server = config.get('Connection', 'server')
     port = config.get('Connection', 'port')
@@ -279,64 +279,37 @@ def get_host_url(URL=None):
     return(str(host_url))
 
 
-def get_response(url='', payload=None, wsid=0, method='GET', expect_json=True):
+def get_response(url='', payload=None, wsid=None, method='GET', expect_json=True):
     """
     Sends data to a given URL.
     """
-    global JSESSIONID
-    # ~ config = ConfigHandler.read_default_config_file(VERBOSE=True)
-    ### The wsid is used for the Cockie here!
-    ### Not for the payload - this might be confusing
+    jsessionid = get_session_id()
     host_url = get_host_url()
+    url = host_url + url
+    req = urllib.request.Request(url)
+    if payload is None:
+        payload = '{}'.encode('utf-8')
+    else:
+        payload = check_payload(payload)
     if VERBOSE:
         print("GET RESPONSE : Calling %s with method %s" % (url, method))
-        print("GET RESPONSE : JSESSIONID = %s, wsid = %s" % (JSESSIONID, wsid))
-    # wsid = get_ws_id(workspace)
-    if JSESSIONID is None:
-        if VERBOSE:
-            print('Getting new JSESSIONID')
-        req = urllib.request.Request(host_url)
-        req.add_header("Authorization", "Basic %s" % get_base64())
-        req.add_header("Content-Type", "application/json")
-        if method is not 'GET':
-            req.add_header("Cookie", "dmx_workspace_id=%s" % (wsid))
-        cj = http.cookiejar.CookieJar()
-        opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj))
-        try:
-            opener.open(host_url)
-        except urllib.request.HTTPError as e:
-            print('Get Session ID Error: '+str(e))
-        else:
-            for c in cj:
-                # ~ if VERBOSE:
-                    # ~ print("COOKIE %s=%s" % (c.name, c.value))
-                if c.name == "JSESSIONID":
-                    JSESSIONID = c.value
-        if VERBOSE:
-            print("JSESSIONID : new = %s" % JSESSIONID)
-    # ~ if VERBOSE:
-        # ~ print("JSESSIONID : old = %s" % JSESSIONID)
-    url = (host_url + str(url)).encode('utf-8').decode('utf-8')
-    if VERBOSE:
-        print("url type is %s" % type(url))
-    req = urllib.request.Request(url)
+        print("GET RESPONSE : JSESSIONID = %s, wsid = %s" % (jsessionid, wsid))
+        print("GET RESPONSE : Payload = %s" % payload)
     if method is 'GET':
-        if VERBOSE:
-            print("JSESSIONID = %s, method = %s" % (JSESSIONID, method))
-        req.add_header("Cookie", "JSESSIONID=%s" % JSESSIONID)
+        req.add_header("Cookie", "JSESSIONID=%s" % jsessionid)
     else:
-        req.add_header("Cookie", "JSESSIONID=%s; dmx_workspace_id=%s" % (JSESSIONID, wsid))
+        req.add_header("Cookie", "JSESSIONID=%s; dmx_workspace_id=%s" % (jsessionid, wsid))
     req.add_header("Content-Type", "application/json")
     req.get_method = lambda: method
     try:
-        response = urllib.request.urlopen(req).read()
+        response = urllib.request.urlopen(req, payload).read()
     except urllib.error.HTTPError as e:
         print('Request Data Error: '+str(e))
     else:
         if VERBOSE:
             print("RESPONSE TYPE = %s, len = %s" % (type(response), len(response)))
             # pretty_print(response)
-            print(response)
+            # ~ print(response)
     return(response)
 
 
@@ -344,7 +317,35 @@ def get_session_id():
     """
     Creates an initial session and returns the session id.
     """
-    get_response()
+    global JSESSIONID
+    if not JSESSIONID:
+        if VERBOSE:
+            print("GET_SESSION_ID : get new id for user %s" %
+                config.get('Credentials', 'authname')
+            )
+        host_url = get_host_url()
+        url = host_url + 'core/topic/0'
+        if VERBOSE:
+            print("GET_SESSION_ID : url = %s" % url)
+        req = urllib.request.Request(url)
+        base_64_string = get_base_64()
+        req.add_header("Authorization", "Basic %s" % base_64_string)
+        req.add_header("Content-Type", "application/json")
+        cj = http.cookiejar.CookieJar()
+        opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj))
+        try:
+            opener.open(req)
+        except urllib.request.HTTPError as e:
+            print('Get Session ID Error: '+str(e))
+        else:
+            for c in cj:
+                if c.name == "JSESSIONID":
+                    JSESSIONID = c.value
+        if VERBOSE:
+            print("JSESSIONID: %s" % JSESSIONID)
+    else:
+        if VERBOSE:
+            print("GET_SESSION_ID : use existing id")
     return(JSESSIONID)
 
 
@@ -352,12 +353,9 @@ def read_request(url):
     """
     Reads the data from a given URL.
     """
-    # ~ url = url.encode('utf-8').decode('utf-8')
     if VERBOSE:
-        print("READ REQUEST : url = %s" % url)
+        print("READ REQUEST : url = %s, wsid = %s" % (url, wsid))
     request = get_response(url)
-    if VERBOSE:
-        print("READ REQUEST : request = %s" % request)
     response = is_json(request, expect_json=True)
     return(response)
 
@@ -368,7 +366,7 @@ def write_request(url, payload=None, workspace='DMX', method='POST', expect_json
     """
     wsid = get_ws_id(workspace)
     if VERBOSE:
-        print("WRITE REQUEST : wsid = %s" % wsid)
+        print("WRITE REQUEST : workspace = %s => wsid = %s" % (workspace, wsid))
     request = get_response(url, payload, wsid, method, expect_json)
     response = is_json(request, expect_json)
     return(response)
@@ -380,11 +378,13 @@ def get_ws_id(workspace):
     It's much faster to get it by its uri, if present.
     """
     if VERBOSE:
-        print("GET_WS_ID: Searching Workspace ID for %s" % workspace)
+        print("GET_WS_ID: Searching Workspace ID for workspace %s" % workspace)
     url = ('core/topic?type_uri=dmx.workspaces.workspace_name'
            '&query="%s"' % workspace.replace(' ', '%20'))
-    # find the workspace_name in the result
-    topics = read_request(url)["topics"]
+    ## find the workspace_name in the result
+    request = get_response(url)
+    response = is_json(request, expect_json=True)
+    topics = response["topics"]
     for topic in topics:
         # find the workspace_name in the result
         if topic['typeUri'] == 'dmx.workspaces.workspace_name':
@@ -392,16 +392,14 @@ def get_ws_id(workspace):
             break
     if VERBOSE:
         print("WS NAME ID = %s" % wsnameid)
-    # ~ url = 'core/topic/0'
     url = ('core/topic/%s/related_topics'
            '?assoc_type_uri=dmx.core.composition&my_role_type_uri='
            'dmx.core.child&others_role_type_uri=dmx.core.parent&'
            'others_topic_type_uri=dmx.workspaces.workspace' %
            str(wsnameid))
-
-    ## topic_id = read_request(url)[0]["id"]
-    # ~ topic_id = read_request(url)[0]["id"]
-    topic_id = read_request(url)
+    request = get_response(url)
+    response = is_json(request, expect_json=True)
+    topic_id = response[0]["id"]
     if VERBOSE:
         print("WS ID = %s" % topic_id)
     return(topic_id)
@@ -546,7 +544,7 @@ def create_member(workspace='DMX', dm_user='testuser'):
     the workspace on the server.
     """
     if VERBOSE:
-        print("Creating Workspace membership for user %s in %s" % (dm_user, workspace))
+        print("CREATE MEMBER : Creating Workspace membership for user %s in %s" % (dm_user, workspace))
     wsid = get_ws_id(workspace)
     url = ('accesscontrol/user/%s/workspace/%s' %
            (dm_user, wsid))
@@ -561,7 +559,7 @@ def create_note(title, body, workspace='Private Workspace'):
     in the workspace on the server.
     """
     if VERBOSE:
-        print("Creating a new note %s with text body %s in workspace %s" %
+        print("CREATE NOTE : Creating a new note %s with text body %s in workspace %s" %
               (title, body, workspace))
 
     # ~ wsid = get_ws_id(workspace)
@@ -588,8 +586,7 @@ def send_data(payload, workspace='DMX'):
     the workspace name on the server.
     """
     if VERBOSE:
-        print("VERBOSE: %s" % VERBOSE)
-        print("SEND_DATA: sending data to workspace '%s'" % workspace)
+        print("SEND DATA: sending data to workspace '%s'" % workspace)
     url = 'core/topic/'
     topic_id = write_request(url, payload, workspace)["id"]
     return(topic_id)
@@ -618,7 +615,6 @@ def import_vcard(vcard_file, workspace):
     """
     This function imports data from a vcard file and creates a person topic.
     """
-
     version = platform.python_version().split('.')
     if VERBOSE:
         print("VERSION: %s" % version)
@@ -630,11 +626,6 @@ def import_vcard(vcard_file, workspace):
     else:
         try:
             import vobject
-        # ~ except ModuleNotFoundError as err:
-            # ~ # Error handling
-            # ~ print(err)
-            # ~ print('Please install module python3-vobject')
-            # ~ sys.exit(0)
         except ImportError as err:
             print(err)
             print('Please install module python3-vobject')
