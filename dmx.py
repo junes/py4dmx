@@ -136,19 +136,27 @@ def check_payload(payload={}):
     it is a valid json format.
     """
     if VERBOSE:
-        print("CHECK_PAYLOAD: %s" % payload)
-        print("PAYLOAD TYPE = %s" % type(payload))
-        print("PAYLOAD LEN = %s" % len(payload))
+        print("CHECK PAYLOAD : TYPE = %s" % type(payload))
+        print("CHECK PAYLOAD : LEN = %s" % len(payload))
+        print("CHECK PAYLOAD : INPUT = %s" % payload)
     ## Test if the payload is a valid json object and get it sorted.
+    # ~ if type(payload) is str:
+        # ~ payload = payload.encode('utf-8')
+    # ~ if type(payload) is bytes:
+        # ~ payload = str(payload)
+    if type(payload) is dict:
+        payload = json.dumps(payload)
     try:
         payload = json.loads(json.dumps(payload, indent=3, sort_keys=True))
     except:
         print("ERROR! Could not read Payload. Not JSON?")
         sys.exit(1)
     else:
+        # ~ if VERBOSE:
+            # ~ pretty_print(payload)
+        # ~ payload = json.dumps(payload).encode('UTF-8')
         if VERBOSE:
-            pretty_print(payload)
-        payload = json.dumps(payload).encode('UTF-8')
+            print("CHECK PAYLOAD : OUTPUT = %s" % payload)
         return(payload)
 
 
@@ -202,7 +210,7 @@ def query_yes_no(question, default="no"):
 
 def is_json(data, expect_json=True):
     """
-    This function returns a JSON formatted string, if possible.
+    This function returns a nicely formatted JSON string, if possible.
     """
     try:
         response = json.loads(data)
@@ -291,6 +299,7 @@ def get_response(url='', payload=None, wsid=None, method='GET', expect_json=True
         payload = '{}'.encode('utf-8')
     else:
         payload = check_payload(payload)
+        payload = payload.encode('utf-8')
     if VERBOSE:
         print("GET RESPONSE : Calling %s with method %s" % (url, method))
         print("GET RESPONSE : JSESSIONID = %s, wsid = %s" % (jsessionid, wsid))
@@ -1205,7 +1214,7 @@ def main(args):
     # we should add a bit more if then ...
     if argsdict['URL']:
         if (argsdict['URL'] != None):
-            data = get_host_url(argsdict['URL'])
+            data = set_host_url(argsdict['URL'])
             print(data)
         else:
             print("ERROR! Missing username of new member or missing workspace name.")
