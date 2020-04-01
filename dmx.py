@@ -309,7 +309,6 @@ def get_host_url():
     return(str(host_url))
 
 
-# ~ def get_response(url='', payload=None, wsid=None, method='GET', expect_json=True):
 def get_response(url='', payload=None, wsid=None, method='GET'):
     """
     Sends data to a given URL and returns the plain response.
@@ -393,6 +392,9 @@ def write_request(url, payload=None, workspace='DMX', method='POST', expect_json
     """
     Writes the data to a given URL.
     """
+    ##
+    ## Value for default workspace should come from config!
+    ##
     wsid = get_ws_id(workspace)
     if VERBOSE:
         print("WRITE REQUEST : workspace = %s has wsid = %s" % (workspace, wsid))
@@ -496,61 +498,6 @@ def create_topicmap(tm_name, tm_type='dmx.topicmaps.topicmap', workspace='DMX'):
         return(topic_id)
 
 
-# ~ def change_password(config, dm_user, dm_old_pass, dm_new_pass):
-    # ~ """
-    # ~ This function changes a user's password
-    # ~ """
-    # ~ ###
-    # ~ ### Needs testing and might need adopting to DMX
-    # ~ ###
-    # ~ authstring = bytes((str(dm_user + ':' + dm_old_pass)), 'UTF-8')
-    # ~ base64string = (base64.b64encode(authstring)).decode('UTF-8')
-
-    # ~ # get id of user_account (not user_name!)
-    # ~ url = 'core/topic/by_type/dmx.accesscontrol.user_account?children=false'
-    # ~ topic_id = read_request(config, url)
-    # ~ print("change Password - Topic ID of user: %s" % topic_id)
-
-    # ~ # get id of private workspace
-    # ~ url = 'core/topic?type_uri=dmx.workspaces.workspace_name&query=Private%%20Workspace'
-    # ~ wsnameid = read_request(config, url)["topics"][0]["id"]
-    # ~ url = ('core/topic/%s/related_topics'
-           # ~ '?assoc_type_uri=dmx.core.composition&my_role_type_uri='
-           # ~ 'dmx.core.child&others_role_type_uri=dmx.core.parent&'
-           # ~ 'others_topic_type_uri=dmx.workspaces.workspace' % str(wsnameid)
-          # ~ )
-    # ~ wsid = read_request(config, url)
-    # ~ print("Change Password WS ID = %s" % wsid)
-
-    # ~ # change password
-    # ~ jsessionid = get_session_id(config)
-    # ~ url = get_host_url(config) + ('/core/topic/%s' % (topic_id))
-    # ~ req = urllib.request.Request(url)
-    # ~ req.add_header("Cookie", "JSESSIONID=%s" % jsessionid)
-    # ~ req.add_header("Content-Type", "application/json")
-    # ~ req.get_method = lambda: 'PUT'
-    # ~ # encrypt the new password
-    # ~ hash_object = hashlib.sha256(dm_new_pass)
-    # ~ dm_new_pass = '-SHA256-'+hash_object.hexdigest()
-    # ~ payload = {
-        # ~ 'children': {
-            # ~ 'dmx.accesscontrol.password': dm_new_pass
-        # ~ }
-    # ~ }
-    # ~ try:
-        # ~ response = (
-            # ~ json.loads(
-                # ~ urllib.request.urlopen(
-                    # ~ req, (json.dumps(payload))
-                # ~ ).read()
-            # ~ )
-        # ~ )
-    # ~ except urllib.error.HTTPError as e:
-        # ~ print('Change Password Error: '+str(e))
-    # ~ else:
-        # ~ print(response)
-
-
 def create_ws(workspace, ws_type, uri=''):
     """
     This function creates a workspace with workspace uri
@@ -571,6 +518,9 @@ def create_member(workspace='DMX', dm_user='testuser'):
     This function creates a user memebrship association for
     the workspace on the server.
     """
+    ##
+    ## Value for default workspace should come from config!
+    ##
     if VERBOSE:
         print("CREATE MEMBER : Creating Workspace membership for user %s in %s" %
               (dm_user, workspace))
@@ -614,11 +564,28 @@ def send_data(payload, workspace='DMX'):
     This function sends the topics according to payload to
     the workspace name on the server.
     """
+    ##
+    ## Value for default workspace should come from config!
+    ##
     if VERBOSE:
         print("SEND DATA: sending data to workspace '%s'" % workspace)
     url = 'core/topic/'
     topic_id = write_request(url, payload, workspace)["id"]
     return(topic_id)
+
+
+def send_post(url, workspace='DMX'):
+    """
+    This function sends a POST request to custom (a plugin) REST resource.
+    """
+    ##
+    ## Value for default workspace should come from config!
+    ##
+    if VERBOSE:
+        print("SEND POST : Sending POST to '%s' in Workspace %s" %
+              (url, workspace))
+    response = write_request(url, workspace)
+    return(response)
 
 
 def reveal_topic(workspace, map_id, topic_id, x_val=0, y_val=0, pinned=False):
@@ -1124,6 +1091,12 @@ def main(args):
         default=None
     )
     parser.add_argument(
+        '-SP', '--send_post',
+        help='Sends simple POST request to given resource endpoint. \
+              Use in conjunction with -w for e.g. triggering imports.',
+        default=None
+    )
+    parser.add_argument(
         '-t', '--get_topic',
         type=int,
         help='Get all data of a topic id.',
@@ -1211,7 +1184,7 @@ def main(args):
     if argsdict['VERBOSE']:
         VERBOSE = True
 
-    ## create initial config from defaults
+    ## create initial config instance from ConfigParser with defaults
     create_default_config()
 
     ## read config_properties must be first, cause it set the default setting for config
@@ -1238,7 +1211,7 @@ def main(args):
             config.set('Credentials', 'authname', argsdict['user']) # usualy the admin password
             config.set('Credentials', 'password', argsdict['password']) # usualy the admin password
         else:
-            print("ERROR! Missing username or password.")
+            print("ERROR! Missing username and/or password.")
 
     if argsdict['file']:
         ##
@@ -1340,6 +1313,10 @@ def main(args):
             print(data)
         else:
             print("ERROR! Missing username of new member or missing workspace name.")
+
+    if argsdict['send_post']:
+        data = send_post(argsdict['send_post'], argsdict['workspace'])
+        pretty_print(data)
 
     if argsdict['delete_topic']:
         data = get_topic(argsdict['delete_topic'])
