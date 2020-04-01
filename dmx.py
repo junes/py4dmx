@@ -19,6 +19,13 @@
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
+"""
+The aim of the script is to provide a set of python functions to play
+with DMX's REST API.
+
+jpn - 20170231
+
+"""
 
 from __future__ import print_function
 
@@ -53,16 +60,16 @@ import http.cookiejar
 ## define global variables
 VERBOSE = False     # VERBOSE mode (True|False)
 JSESSIONID = None   # the first result of get_session_id
-# config = configparser.SafeConfigParser()
-# ~ config = configparser.ConfigParser(allow_no_value=True)
+## config = configparser.ConfigParser(allow_no_value=True)
 config = configparser.ConfigParser()
 
 
-def read_default_config_file():
+def create_default_config():
     """
-    Reads the config parameter from file ./dmx.cfg
+    This function creates the initial config object.
     """
-    ## if parameter is empty or missing, use these parameters
+    global config
+    ## config is the dictionary that holds the config params
     sample_config = """
     [Credentials]
     authname = admin
@@ -76,6 +83,19 @@ def read_default_config_file():
     workspace = DMX
     """
     config.read_string(sample_config)
+    if VERBOSE:
+        for section in config.sections():
+            for (key, val) in config.items(section):
+                print("CREATE DEFAULT CONFIG : %s: %s=%s" % (section, key, val))
+    return
+
+
+def read_default_config_file():
+    """
+    Reads the config parameter from file ./dmx.cfg
+    """
+    global config
+    ## if parameter is empty or missing, use these parameters
     script_dir = os.path.dirname(__file__) #<-- absolute dir the script is in
     config_file_name = 'dmx.cfg'
     config_file = os.path.join(script_dir, config_file_name)
@@ -87,8 +107,10 @@ def read_default_config_file():
         print("ERROR! Config file %s not found." % config_file)
         sys.exit(1)
     if VERBOSE:
-        for key in config.keys():
-            print("DEFAULT CONFIG FILE : %s : %s" % (key, config.items(key)))
+        for section in config.sections():
+            for (key, val) in config.items(section):
+                print("DEFAULT CONFIG FILE : %s: %s=%s" % (section, key, val))
+    return
 
 
 def read_dmx_config_properties_file(config_file='config.properties'):
@@ -96,6 +118,7 @@ def read_dmx_config_properties_file(config_file='config.properties'):
     Reads the configuration data from '/path/to/dmx/config.properties'
     and overwrites the config settings with new values.
     """
+    global config
     dmx_params = {}
     if os.access(config_file, os.R_OK):
         if VERBOSE:
@@ -105,10 +128,10 @@ def read_dmx_config_properties_file(config_file='config.properties'):
     else:
         print("ERROR! Could not read config file %s." % (config_file))
         sys.exit(1)
-    for ln in lines:
-        if not ln[0] in ('', ' ', '#', ';'):
+    for this_line in lines:
+        if not this_line[0] in ('', ' ', '#', ';'):
             try:
-                key, val = ln.strip().replace(" ", "").split('=', 1)
+                key, val = this_line.strip().replace(" ", "").split('=', 1)
             except ValueError:
                 print("INFO: No value found for %s in %s" % (key, config_file))
             else:
@@ -131,7 +154,8 @@ def read_dmx_config_properties_file(config_file='config.properties'):
     return
 
 
-def check_payload(payload={}):
+# ~ def check_payload(payload={}):
+def check_payload(payload=None):
     """
     This function checks the payload to be send to server and makes sure
     it is a valid json format.
@@ -140,7 +164,7 @@ def check_payload(payload={}):
         print("CHECK PAYLOAD : TYPE = %s" % type(payload))
         print("CHECK PAYLOAD : LEN = %s" % len(payload))
         print("CHECK PAYLOAD : INPUT = %s" % payload)
-    if type(payload) is dict:
+    if isinstance(payload, dict):
         payload = json.dumps(payload)
     try:
         payload = json.loads(json.dumps(payload, indent=3, sort_keys=True))
@@ -242,25 +266,31 @@ def get_base_64():
 
 
 def set_host_url(url):
+    """
+    This function sets the global config params to a given URL.
+    """
     global config
     host_url = urllib.parse.urlparse(url)
-    if VERBOSE:
-        print("URL Protocol: %s" % host_url.scheme)
-        print("URL Server: %s" % host_url.hostname)
-        print("URL Port: %s" % host_url.port)
-        print("URL Path: %s" % host_url.path)
+    # ~ if VERBOSE:
+        # ~ print("URL Protocol: %s" % host_url.scheme)
+        # ~ print("URL Server: %s" % host_url.hostname)
+        # ~ print("URL Port: %s" % host_url.port)
+        # ~ print("URL Path: %s" % host_url.path)
     config.set('Connection', 'protocol', host_url.scheme)
     config.set('Connection', 'server', host_url.hostname)
-    if host_url.scheme == 'https' and host_url.port == None:
+    if host_url.scheme == 'https' and host_url.port is None:
         config.set('Connection', 'port', '443')
-    elif host_url.scheme == 'http' and host_url.port == None:
+    elif host_url.scheme == 'http' and host_url.port is None:
         config.set('Connection', 'port', '80')
     else:
         config.set('Connection', 'port', str(host_url.port))
-    if host_url.path == None:
+    if host_url.path is None:
         config.set('Connection', 'path', '/')
     else:
         config.set('Connection', 'path', str(host_url.path.rstrip('/') + '/'))
+    if VERBOSE:
+        for (key, val) in config.items('Connection'):
+            print("SET HOST URL : %s=%s" % (key, val))
     return
 
 
@@ -279,9 +309,10 @@ def get_host_url():
     return(str(host_url))
 
 
-def get_response(url='', payload=None, wsid=None, method='GET', expect_json=True):
+# ~ def get_response(url='', payload=None, wsid=None, method='GET', expect_json=True):
+def get_response(url='', payload=None, wsid=None, method='GET'):
     """
-    Sends data to a given URL.
+    Sends data to a given URL and returns the plain response.
     """
     jsessionid = get_session_id()
     host_url = get_host_url()
@@ -296,7 +327,7 @@ def get_response(url='', payload=None, wsid=None, method='GET', expect_json=True
         print("GET RESPONSE : Calling %s with method %s" % (url, method))
         print("GET RESPONSE : JSESSIONID = %s, wsid = %s" % (jsessionid, wsid))
         print("GET RESPONSE : Payload = %s" % payload)
-    if method is 'GET':
+    if method == 'GET':
         req.add_header("Cookie", "JSESSIONID=%s" % jsessionid)
     else:
         req.add_header("Cookie", "JSESSIONID=%s; dmx_workspace_id=%s" % (jsessionid, wsid))
@@ -304,13 +335,11 @@ def get_response(url='', payload=None, wsid=None, method='GET', expect_json=True
     req.get_method = lambda: method
     try:
         response = urllib.request.urlopen(req, payload).read()
-    except urllib.error.HTTPError as e:
-        print('Request Data Error: '+str(e))
+    except urllib.error.HTTPError as error_message:
+        print('Request Data Error: '+str(error_message))
     else:
         if VERBOSE:
             print("RESPONSE TYPE = %s, len = %s" % (type(response), len(response)))
-            # pretty_print(response)
-            # ~ print(response)
     return(response)
 
 
@@ -322,8 +351,7 @@ def get_session_id():
     if not JSESSIONID:
         if VERBOSE:
             print("GET_SESSION_ID : get new id for user %s" %
-                config.get('Credentials', 'authname')
-            )
+                  config.get('Credentials', 'authname'))
         host_url = get_host_url()
         url = host_url + 'core/topic/0'
         if VERBOSE:
@@ -332,16 +360,16 @@ def get_session_id():
         base_64_string = get_base_64()
         req.add_header("Authorization", "Basic %s" % base_64_string)
         req.add_header("Content-Type", "application/json")
-        cj = http.cookiejar.CookieJar()
-        opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj))
+        cookie_jar = http.cookiejar.CookieJar()
+        opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cookie_jar))
         try:
             opener.open(req)
-        except urllib.request.HTTPError as e:
-            print('Get Session ID Error: '+str(e))
+        except urllib.request.HTTPError as error_message:
+            print('Get Session ID Error: '+str(error_message))
         else:
-            for c in cj:
-                if c.name == "JSESSIONID":
-                    JSESSIONID = c.value
+            for cookie in cookie_jar:
+                if cookie.name == "JSESSIONID":
+                    JSESSIONID = cookie.value
         if VERBOSE:
             print("JSESSIONID: %s" % JSESSIONID)
     else:
@@ -367,8 +395,8 @@ def write_request(url, payload=None, workspace='DMX', method='POST', expect_json
     """
     wsid = get_ws_id(workspace)
     if VERBOSE:
-        print("WRITE REQUEST : workspace = %s => wsid = %s" % (workspace, wsid))
-    request = get_response(url, payload, wsid, method, expect_json)
+        print("WRITE REQUEST : workspace = %s has wsid = %s" % (workspace, wsid))
+    request = get_response(url, payload, wsid, method)
     response = is_json(request, expect_json)
     return(response)
 
@@ -387,7 +415,7 @@ def get_ws_id(workspace):
     response = is_json(request, expect_json=True)
     topics = response["topics"]
     for topic in topics:
-        # find the workspace_name in the result
+        ## find the workspace_name in the result
         if topic['typeUri'] == 'dmx.workspaces.workspace_name':
             wsnameid = (topic['id'])
             break
@@ -400,7 +428,11 @@ def get_ws_id(workspace):
            str(wsnameid))
     request = get_response(url)
     response = is_json(request, expect_json=True)
-    topic_id = response[0]["id"]
+    ## The following is a workarround to fix
+    ## Pylint3 Error: Sequence index is not an int, slice,
+    ## or instance with __index__ (invalid-sequence-index)
+    topic = json.loads(json.dumps(response[0]))
+    topic_id = topic['id']
     if VERBOSE:
         print("WS ID = %s" % topic_id)
     return(topic_id)
@@ -410,7 +442,7 @@ def create_user(dm_user='testuser', dm_pass='testpass'):
     """
     This function creates a new user on the server.
     """
-    # check if username exits
+    ## check if username exits
     users = list(get_items('dmx.accesscontrol.username').values())
     if VERBOSE:
         print("USERS: %s" % users)
@@ -418,15 +450,12 @@ def create_user(dm_user='testuser', dm_pass='testpass'):
         print("ERROR! User '%s' exists." % dm_user)
         sys.exit(1)
     else:
-        # create user
+        ## create user
         url = 'accesscontrol/user_account'
         hash_object = hashlib.sha256(dm_pass.encode('UTF-8'))
         dm_pass = '-SHA256-'+hash_object.hexdigest()
         payload = {'username' : dm_user, 'password' : dm_pass}
-        ## payload = json.dumps({'username' : dm_user, 'password' : dm_pass})
-        # topic_id = write_request(url, payload)["id"]
         topic_id = write_request(url, payload)["id"]
-        ## debug
         if VERBOSE:
             print("TOPIC_ID = %s" % topic_id)
             print("New user '%s' was created with topic_id %s." % (dm_user, topic_id))
@@ -437,7 +466,7 @@ def create_topicmap(tm_name, tm_type='dmx.topicmaps.topicmap', workspace='DMX'):
     """
     This function creates a new topicmap on the server.
     """
-    # check if topicmap exits (globally!!!)
+    ## check if topicmap exits (globally!!!)
     maps = list(get_items('dmx.topicmaps.topicmap').values())
     if VERBOSE:
         print("CREATE TOPICMAP: %s" % tm_name)
@@ -467,61 +496,59 @@ def create_topicmap(tm_name, tm_type='dmx.topicmaps.topicmap', workspace='DMX'):
         return(topic_id)
 
 
-def change_password(dm_user, dm_old_pass, dm_new_pass):
-    """
-    This function changes a user's password
-    """
-    ###
-    ### Needs testing and might need adopting to DMX
-    ###
-    base64string = base64.encodestring(
-        "%s:%s" % (dm_user, dm_old_pass)
-    ).replace("\n", "")
+# ~ def change_password(config, dm_user, dm_old_pass, dm_new_pass):
+    # ~ """
+    # ~ This function changes a user's password
+    # ~ """
+    # ~ ###
+    # ~ ### Needs testing and might need adopting to DMX
+    # ~ ###
+    # ~ authstring = bytes((str(dm_user + ':' + dm_old_pass)), 'UTF-8')
+    # ~ base64string = (base64.b64encode(authstring)).decode('UTF-8')
 
-    # get id of user_account (not user_name!)
-    url = 'core/topic/by_type/dmx.accesscontrol.user_account?children=false'
-    topic_id = read_request(url)
-    print("change Password - Topic ID of user: %s" % topic_id)
+    # ~ # get id of user_account (not user_name!)
+    # ~ url = 'core/topic/by_type/dmx.accesscontrol.user_account?children=false'
+    # ~ topic_id = read_request(config, url)
+    # ~ print("change Password - Topic ID of user: %s" % topic_id)
 
-    # get id of private workspace
-    url = 'core/topic?type_uri=dmx.workspaces.workspace_name&query=Private%%20Workspace'
-    wsnameid = read_request(url)["topics"][0]["id"]
-    url = ('core/topic/%s/related_topics'
-           '?assoc_type_uri=dmx.core.composition&my_role_type_uri='
-           'dmx.core.child&others_role_type_uri=dmx.core.parent&'
-           'others_topic_type_uri=dmx.workspaces.workspace' % str(wsnameid)
-          )
-    wsid = read_request(url)
-    print("Change Password WS ID = %s" % wsid)
+    # ~ # get id of private workspace
+    # ~ url = 'core/topic?type_uri=dmx.workspaces.workspace_name&query=Private%%20Workspace'
+    # ~ wsnameid = read_request(config, url)["topics"][0]["id"]
+    # ~ url = ('core/topic/%s/related_topics'
+           # ~ '?assoc_type_uri=dmx.core.composition&my_role_type_uri='
+           # ~ 'dmx.core.child&others_role_type_uri=dmx.core.parent&'
+           # ~ 'others_topic_type_uri=dmx.workspaces.workspace' % str(wsnameid)
+          # ~ )
+    # ~ wsid = read_request(config, url)
+    # ~ print("Change Password WS ID = %s" % wsid)
 
-    # change password
-    jsessionid = get_session_id()
-    get_session_id()
-    url = get_host_url() + ('/core/topic/%s' % (topic_id))
-    req = urllib.request.Request(url)
-    req.add_header("Cookie", "JSESSIONID=%s" % jsessionid)
-    req.add_header("Content-Type", "application/json")
-    req.get_method = lambda: 'PUT'
-    # encrypt the new password
-    hash_object = hashlib.sha256(dm_new_pass)
-    dm_new_pass = '-SHA256-'+hash_object.hexdigest()
-    payload = {
-        'children': {
-            'dmx.accesscontrol.password': dm_new_pass
-        }
-    }
-    try:
-        response = (
-            json.loads(
-                urllib.request.urlopen(
-                    req, (json.dumps(payload))
-                ).read()
-            )
-        )
-    except urllib.error.HTTPError as e:
-        print('Change Password Error: '+str(e))
-    else:
-        print(response)
+    # ~ # change password
+    # ~ jsessionid = get_session_id(config)
+    # ~ url = get_host_url(config) + ('/core/topic/%s' % (topic_id))
+    # ~ req = urllib.request.Request(url)
+    # ~ req.add_header("Cookie", "JSESSIONID=%s" % jsessionid)
+    # ~ req.add_header("Content-Type", "application/json")
+    # ~ req.get_method = lambda: 'PUT'
+    # ~ # encrypt the new password
+    # ~ hash_object = hashlib.sha256(dm_new_pass)
+    # ~ dm_new_pass = '-SHA256-'+hash_object.hexdigest()
+    # ~ payload = {
+        # ~ 'children': {
+            # ~ 'dmx.accesscontrol.password': dm_new_pass
+        # ~ }
+    # ~ }
+    # ~ try:
+        # ~ response = (
+            # ~ json.loads(
+                # ~ urllib.request.urlopen(
+                    # ~ req, (json.dumps(payload))
+                # ~ ).read()
+            # ~ )
+        # ~ )
+    # ~ except urllib.error.HTTPError as e:
+        # ~ print('Change Password Error: '+str(e))
+    # ~ else:
+        # ~ print(response)
 
 
 def create_ws(workspace, ws_type, uri=''):
@@ -545,7 +572,8 @@ def create_member(workspace='DMX', dm_user='testuser'):
     the workspace on the server.
     """
     if VERBOSE:
-        print("CREATE MEMBER : Creating Workspace membership for user %s in %s" % (dm_user, workspace))
+        print("CREATE MEMBER : Creating Workspace membership for user %s in %s" %
+              (dm_user, workspace))
     wsid = get_ws_id(workspace)
     url = ('accesscontrol/user/%s/workspace/%s' %
            (dm_user, wsid))
@@ -593,7 +621,7 @@ def send_data(payload, workspace='DMX'):
     return(topic_id)
 
 
-def reveal_topic(workspace, map_id, topic_id, x=0, y=0, pinned=False):
+def reveal_topic(workspace, map_id, topic_id, x_val=0, y_val=0, pinned=False):
     """
     This function reveales a topic (id) on a topicmap (id) at
     position x, y, pinned or unpinned
@@ -606,7 +634,7 @@ def reveal_topic(workspace, map_id, topic_id, x=0, y=0, pinned=False):
     payload = json.loads(
         '{ "dmx.topicmaps.x": %s, "dmx.topicmaps.y": %s, \
         "dmx.topicmaps.visibility": true, "dmx.topicmaps.pinned": %s }'
-        % (x, y, pinned)
+        % (x_val, y_val, pinned)
     )
     response = write_request(url, payload, workspace, expect_json=False)
     return(response)
@@ -941,6 +969,7 @@ def main(args):
     """
     global VERBOSE    # verbose mode (True|False)
     global JSESSIONID # can be entered via command line
+    global config     # the gloabl server access params
 
     parser = argparse.ArgumentParser(
         description='This is a Python script \
@@ -1170,38 +1199,40 @@ def main(args):
     args = parser.parse_args()
     argsdict = vars(args)
 
+    ##########################################
     ## action on arguments (order matters!) ##
-    """
-    These functions shall not include logic, but only check and interpret the
-    arguments and then call a funtion (ideally named like argument) to do
-    the computing.
-    """
-    # enable VERBOSE mode
+    ##########################################
+    ##
+    ## These functions shall not include logic, but only check and interpret the
+    ## arguments and then call a funtion (ideally named like argument) to do
+    ## the computing.
+    ##
+    ## enable VERBOSE mode
     if argsdict['VERBOSE']:
         VERBOSE = True
-    else:
-        VERBOSE = False
 
-    # read config_properties must be first, cause it set the default setting for config
+    ## create initial config from defaults
+    create_default_config()
+
+    ## read config_properties must be first, cause it set the default setting for config
     if argsdict['config_properties']:
         read_dmx_config_properties_file(argsdict['config_properties'])
     else:
         read_default_config_file()
 
-    # if a JESSIONID is entered via command line, then use it.
+    ## if a JESSIONID is entered via command line, then use it.
     if argsdict['JSESSIONID']:
         JSESSIONID = (argsdict['JSESSIONID'])
 
-    # Now we set the URL !!! This may conflict with config_properties and default dmx.cfg
-    # we should add a bit more if then ...
+    ## Now we set the URL !!! This may conflict with config_properties and default dmx.cfg
+    ## we should add a bit more if then ...
     if argsdict['URL']:
-        if (argsdict['URL'] != None):
-            data = set_host_url(argsdict['URL'])
-            # ~ print(data)
+        if argsdict['URL'] is not None:
+            set_host_url(argsdict['URL'])
         else:
             print("ERROR! Missing username of new member or missing workspace name.")
 
-    # login is next, as one may want to manually set who logs in
+    ## login is next, as one may want to manually set who logs in
     if argsdict['login']:
         if (argsdict['user'] != None) and (argsdict['password'] != None):
             config.set('Credentials', 'authname', argsdict['user']) # usualy the admin password
@@ -1210,10 +1241,10 @@ def main(args):
             print("ERROR! Missing username or password.")
 
     if argsdict['file']:
-        """
-        This function needs rewrinting! The logic of importing data from
-        json file should be in a separate function.
-        """
+        ##
+        ## This function needs rewrinting! The logic of importing data from
+        ## json file should be in a separate function.
+        ##
         if VERBOSE:
             print("ARGSDICT FILE: Importing json data from file %s" % (argsdict['file']))
         # ~ payload = import_payload(str(argsdict['file']))
@@ -1239,7 +1270,10 @@ def main(args):
         if VERBOSE:
             print("Importing vcard data from file %s" % (argsdict['import_vcard']))
         if argsdict['workspace']:
-            data = import_vcard(argsdict['import_vcard'], argsdict['workspace'])
+            data = import_vcard(
+                argsdict['import_vcard'],
+                argsdict['workspace']
+            )
             print(data)
         else:
             print("ERROR! Missing workspace declaration.")
@@ -1309,16 +1343,13 @@ def main(args):
 
     if argsdict['delete_topic']:
         data = get_topic(argsdict['delete_topic'])
-        if (not (argsdict['yes']) and
-            query_yes_no(
+        if (not (argsdict['yes']) and query_yes_no(
                 "Are you sure you want to delete topic id %s with value \"%s\"" %
-                (argsdict['delete_topic'], data['value'])
-            )
-        ):
+                (argsdict['delete_topic'], data['value']))):
             print('yes')
             data = delete_topic(argsdict['delete_topic'])
             print(data)
-        elif (argsdict['yes']):
+        elif argsdict['yes']:
             data = delete_topic(argsdict['delete_topic'])
             print(data)
         else:
@@ -1371,4 +1402,4 @@ if __name__ == '__main__':
     else:
         sys.exit(main(sys.argv))
 
-# END.
+## END.
