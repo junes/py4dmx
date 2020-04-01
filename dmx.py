@@ -69,7 +69,7 @@ def create_default_config():
     This function creates the initial config object.
     """
     global config
-    ## config is the dictionary that holds the config params
+    ## config is the ConfigParser instance that holds the config params
     sample_config = """
     [Credentials]
     authname = admin
@@ -271,11 +271,11 @@ def set_host_url(url):
     """
     global config
     host_url = urllib.parse.urlparse(url)
-    # ~ if VERBOSE:
-        # ~ print("URL Protocol: %s" % host_url.scheme)
-        # ~ print("URL Server: %s" % host_url.hostname)
-        # ~ print("URL Port: %s" % host_url.port)
-        # ~ print("URL Path: %s" % host_url.path)
+    if VERBOSE:
+        print("SET HOST URL URLPARSE : Protocol: %s" % host_url.scheme)
+        print("SET HOST URL URLPARSE : Server: %s" % host_url.hostname)
+        print("SET HOST URL URLPARLE : Port: %s" % host_url.port)
+        print("SET HOST URL URLPARSE : Path: %s" % host_url.path)
     config.set('Connection', 'protocol', host_url.scheme)
     config.set('Connection', 'server', host_url.hostname)
     if host_url.scheme == 'https' and host_url.port is None:
@@ -290,7 +290,7 @@ def set_host_url(url):
         config.set('Connection', 'path', str(host_url.path.rstrip('/') + '/'))
     if VERBOSE:
         for (key, val) in config.items('Connection'):
-            print("SET HOST URL : %s=%s" % (key, val))
+            print("SET HOST URL CONFIG ITEMS : %s=%s" % (key, val))
     return
 
 
@@ -388,13 +388,13 @@ def read_request(url):
     return(response)
 
 
-def write_request(url, payload=None, workspace='DMX', method='POST', expect_json=True):
+def write_request(url, payload=None, workspace=None, method='POST', expect_json=True):
     """
     Writes the data to a given URL.
     """
-    ##
-    ## Value for default workspace should come from config!
-    ##
+    ## if workspace in None, the default workspace should come from config:
+    if workspace is None:
+        workspace = config.get('Connection', 'workspace')
     wsid = get_ws_id(workspace)
     if VERBOSE:
         print("WRITE REQUEST : workspace = %s has wsid = %s" % (workspace, wsid))
@@ -464,10 +464,13 @@ def create_user(dm_user='testuser', dm_pass='testpass'):
         return(topic_id)
 
 
-def create_topicmap(tm_name, tm_type='dmx.topicmaps.topicmap', workspace='DMX'):
+def create_topicmap(tm_name, tm_type='dmx.topicmaps.topicmap', workspace=None):
     """
     This function creates a new topicmap on the server.
     """
+    ## if workspace in None, the default workspace should come from config:
+    if workspace is None:
+        workspace = config.get('Connection', 'workspace')
     ## check if topicmap exits (globally!!!)
     maps = list(get_items('dmx.topicmaps.topicmap').values())
     if VERBOSE:
@@ -513,14 +516,14 @@ def create_ws(workspace, ws_type, uri=''):
     return(topic_id)
 
 
-def create_member(workspace='DMX', dm_user='testuser'):
+def create_member(workspace=None, dm_user='testuser'):
     """
     This function creates a user memebrship association for
     the workspace on the server.
     """
-    ##
-    ## Value for default workspace should come from config!
-    ##
+    ## if workspace in None, the default workspace should come from config:
+    if workspace is None:
+        workspace = config.get('Connection', 'workspace')
     if VERBOSE:
         print("CREATE MEMBER : Creating Workspace membership for user %s in %s" %
               (dm_user, workspace))
@@ -532,11 +535,14 @@ def create_member(workspace='DMX', dm_user='testuser'):
     return(response)
 
 
-def create_note(title, body, workspace='Private Workspace'):
+def create_note(title, body, workspace=None):
     """
     This function creates a new note with text body
     in the workspace on the server.
     """
+    ## if workspace in None, the default workspace should come from config:
+    if workspace is None:
+        workspace = config.get('Connection', 'workspace')
     if VERBOSE:
         print("CREATE NOTE : Creating a new note %s with text body %s in workspace %s" %
               (title, body, workspace))
@@ -559,14 +565,14 @@ def create_note(title, body, workspace='Private Workspace'):
     return(topic_id)
 
 
-def send_data(payload, workspace='DMX'):
+def send_data(payload, workspace=None):
     """
     This function sends the topics according to payload to
     the workspace name on the server.
     """
-    ##
-    ## Value for default workspace should come from config!
-    ##
+    ## if workspace in None, the default workspace should come from config:
+    if workspace is None:
+        workspace = config.get('Connection', 'workspace')
     if VERBOSE:
         print("SEND DATA: sending data to workspace '%s'" % workspace)
     url = 'core/topic/'
@@ -574,13 +580,13 @@ def send_data(payload, workspace='DMX'):
     return(topic_id)
 
 
-def send_post(url, workspace='DMX'):
+def send_post(url, workspace=None):
     """
     This function sends a POST request to custom (a plugin) REST resource.
     """
-    ##
-    ## Value for default workspace should come from config!
-    ##
+    ## if workspace in None, the default workspace should come from config:
+    if workspace is None:
+        workspace = config.get('Connection', 'workspace')
     if VERBOSE:
         print("SEND POST : Sending POST to '%s' in Workspace %s" %
               (url, workspace))
@@ -607,10 +613,13 @@ def reveal_topic(workspace, map_id, topic_id, x_val=0, y_val=0, pinned=False):
     return(response)
 
 
-def import_vcard(vcard_file, workspace):
+def import_vcard(vcard_file, workspace=None):
     """
     This function imports data from a vcard file and creates a person topic.
     """
+    ## if workspace in None, the default workspace should come from config:
+    if workspace is None:
+        workspace = config.get('Connection', 'workspace')
     version = platform.python_version().split('.')
     if VERBOSE:
         print("PYTHON VERSION : %s" % version)
