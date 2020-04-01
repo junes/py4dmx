@@ -31,8 +31,8 @@ from __future__ import print_function
 
 __author__ = 'Juergen Neumann <juergen@dmx.systems>'
 __copyright__ = 'Copyright 2019, DMX Systems <https://dmx.systems>'
-__license__ = 'GPL'
-__version__ = '3'
+__license__ = 'GPL 3+'
+__version__ = '0.1'
 __maintainer__ = 'Juergen Neumann'
 __email__ = 'juergen@dmx.systems'
 __status__ = 'Development'
