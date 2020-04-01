@@ -53,8 +53,9 @@ import http.cookiejar
 ## define global variables
 VERBOSE = False     # VERBOSE mode (True|False)
 JSESSIONID = None   # the first result of get_session_id
-config = configparser.SafeConfigParser()
+# config = configparser.SafeConfigParser()
 # ~ config = configparser.ConfigParser(allow_no_value=True)
+config = configparser.ConfigParser()
 
 
 def read_default_config_file():
@@ -139,11 +140,6 @@ def check_payload(payload={}):
         print("CHECK PAYLOAD : TYPE = %s" % type(payload))
         print("CHECK PAYLOAD : LEN = %s" % len(payload))
         print("CHECK PAYLOAD : INPUT = %s" % payload)
-    ## Test if the payload is a valid json object and get it sorted.
-    # ~ if type(payload) is str:
-        # ~ payload = payload.encode('utf-8')
-    # ~ if type(payload) is bytes:
-        # ~ payload = str(payload)
     if type(payload) is dict:
         payload = json.dumps(payload)
     try:
@@ -152,9 +148,6 @@ def check_payload(payload={}):
         print("ERROR! Could not read Payload. Not JSON?")
         sys.exit(1)
     else:
-        # ~ if VERBOSE:
-            # ~ pretty_print(payload)
-        # ~ payload = json.dumps(payload).encode('UTF-8')
         if VERBOSE:
             print("CHECK PAYLOAD : OUTPUT = %s" % payload)
         return(payload)
@@ -250,26 +243,25 @@ def get_base_64():
 
 def set_host_url(url):
     global config
-    if url != None:
-        host_url = urllib.parse.urlparse(URL)
-        if VERBOSE:
-            print("URL Protocol: %s" % host_url.scheme)
-            print("URL Server: %s" % host_url.hostname)
-            print("URL Port: %s" % host_url.port)
-            print("URL Path: %s" % host_url.path)
-        config.set('Connection', 'protocol', host_url.scheme)
-        config.set('Connection', 'server', host_url.hostname)
-        if host_url.scheme == 'https' and host_url.port == None:
-            config.set('Connection', 'port', '443')
-        elif host_url.scheme == 'http' and host_url.port == None:
-            config.set('Connection', 'port', '80')
-        else:
-            config.set('Connection', 'port', str(host_url.port))
-        if host_url.path == None:
-            config.set('Connection', 'path', '/')
-        else:
-            config.set('Connection', 'path', str(host_url.path.rstrip('/') + '/'))
-        return
+    host_url = urllib.parse.urlparse(url)
+    if VERBOSE:
+        print("URL Protocol: %s" % host_url.scheme)
+        print("URL Server: %s" % host_url.hostname)
+        print("URL Port: %s" % host_url.port)
+        print("URL Path: %s" % host_url.path)
+    config.set('Connection', 'protocol', host_url.scheme)
+    config.set('Connection', 'server', host_url.hostname)
+    if host_url.scheme == 'https' and host_url.port == None:
+        config.set('Connection', 'port', '443')
+    elif host_url.scheme == 'http' and host_url.port == None:
+        config.set('Connection', 'port', '80')
+    else:
+        config.set('Connection', 'port', str(host_url.port))
+    if host_url.path == None:
+        config.set('Connection', 'path', '/')
+    else:
+        config.set('Connection', 'path', str(host_url.path.rstrip('/') + '/'))
+    return
 
 
 def get_host_url():
@@ -363,7 +355,7 @@ def read_request(url):
     Reads the data from a given URL.
     """
     if VERBOSE:
-        print("READ REQUEST : url = %s, wsid = %s" % (url, wsid))
+        print("READ REQUEST : url = %s" % url)
     request = get_response(url)
     response = is_json(request, expect_json=True)
     return(response)
@@ -626,7 +618,7 @@ def import_vcard(vcard_file, workspace):
     """
     version = platform.python_version().split('.')
     if VERBOSE:
-        print("VERSION: %s" % version)
+        print("PYTHON VERSION : %s" % version)
     if int(version[0]) < 3 or int(version[1]) < 6:
         print('SORRY! VCARD option requires Python 3.6 or higher.')
         # make pylint3 happy:
@@ -833,7 +825,7 @@ def import_vcard(vcard_file, workspace):
     )
     payload = json.loads(payload)
     if VERBOSE:
-        print("NEW PERSON: %s" % payload)
+        print("IMPORT VCARD : new person: %s" % payload)
     topic_id = write_request(url, payload, workspace)["id"]
     return(topic_id)
 
@@ -926,16 +918,6 @@ def delete_topic(topic_id):
     """
     This function deletes a topic by its id from the server.
     """
-    ###
-    ### Still needs to be adopted to make use of write_request
-    ###
-    ### write_request(url, payload=None, workspace='DMX', method='POST', expect_json=True):
-    # ~ jsessionid = get_session_id()
-    # ~ url = str(host_url()) + ('core/topic/%s' % topic_id)
-    # ~ req = urllib.request.Request(url)
-    # ~ req.add_header("Cookie", "JSESSIONID=%s" % jsessionid)
-    # ~ req.add_header("Content-Type", "application/json")
-    # ~ req.get_method = lambda: 'DELETE'
     if VERBOSE:
         print("DELETE TOPIC : deleting topic with id '%s'" % topic_id)
     url = ('core/topic/%s' % topic_id)
@@ -1215,7 +1197,7 @@ def main(args):
     if argsdict['URL']:
         if (argsdict['URL'] != None):
             data = set_host_url(argsdict['URL'])
-            print(data)
+            # ~ print(data)
         else:
             print("ERROR! Missing username of new member or missing workspace name.")
 
@@ -1383,9 +1365,6 @@ def main(args):
 
 
 if __name__ == '__main__':
-    # import sys
-    ## debug
-    # print(sys.version_info)
     if sys.version_info < (3, 0):
         print('ERROR! This program requires python version 3 or highter.')
         sys.exit(1)
