@@ -27,6 +27,14 @@ jpn - 20170231
 
 """
 
+## Adopting to DM5API (20200605)
+## 1. renamed workspace to workspaces
+## 2. renamed topic to topics
+## 3. renamed by_type to type
+## 4. relataed_topics to related-topics
+
+
+
 from __future__ import print_function
 
 __author__ = 'Juergen Neumann <juergen@dmx.systems>'
@@ -229,13 +237,19 @@ def is_json(data, expect_json=True):
     """
     This function returns a nicely formatted JSON string, if possible.
     """
+    ## TODO
+    ## this function should not be called at all if data is empty.
+    ## defining response (next line) should not be neccessary.
+    response=''
+    ##
     try:
         response = json.loads(data)
     except:
         if VERBOSE:
-            print("RESPONSE is not JSON")
+            print("RESPONSE is not JSON (IS JSON: except)")
             print("RESPONSE TYPE = %s" % type(response))
-            print('RESPONSE is "OK".')
+            print('RESPONSE is "%s".' % response)
+            print('RESPONSE return "OK".')
         return("OK")
     else:
         if VERBOSE:
@@ -246,7 +260,8 @@ def is_json(data, expect_json=True):
             return(response)
         else:
             if VERBOSE:
-                print('RESPONSE is "OK".')
+                print('RESPONSE is "%s".' % response)
+                print('RESPONSE return "OK".')
             return("OK")
 
 
@@ -315,7 +330,8 @@ def get_response(url='', payload=None, wsid=None, method='GET'):
     """
     jsessionid = get_session_id()
     host_url = get_host_url()
-    url = host_url + url
+    ## Do all relevant string replacements for url here
+    url = host_url + (url.replace(' ', '%20').replace('"', '%22'))
     req = urllib.request.Request(url)
     if payload is None:
         payload = '{}'.encode('utf-8')
@@ -410,8 +426,18 @@ def get_ws_id(workspace):
     """
     if VERBOSE:
         print("GET_WS_ID : Searching Workspace ID for workspace %s" % workspace)
-    url = ('core/topic?type_uri=dmx.workspaces.workspace_name'
-           '&query="%s"' % workspace.replace(' ', '%20'))
+    # url = ('core/topic?type_uri=dmx.workspaces.workspace_name'
+    #       '&query="%s"' % workspace.replace(' ', '%20'))
+
+    ## NEU: core/topics/query/"%s"?topic_type_uri=dmx.workspaces.workspace_name
+    ## " => %22
+    ## % => '%%'
+
+    ## move all string replacements to get_response
+    #url = ('core/topics/query/%%22%s%%22?topic_type_uri=dmx.workspaces.workspace_name'
+    #       % workspace.replace(' ', '%20'))
+    url = ('core/topics/query/"%s"?topic_type_uri=dmx.workspaces.workspace_name'
+           % workspace)
     ## find the workspace_name in the result
     request = get_response(url)
     response = is_json(request, expect_json=True)
@@ -423,7 +449,8 @@ def get_ws_id(workspace):
             break
     if VERBOSE:
         print("WS NAME ID = %s" % wsnameid)
-    url = ('core/topic/%s/related_topics'
+    ## TODO
+    url = ('core/topic/%s/related-topics'
            '?assoc_type_uri=dmx.core.composition&my_role_type_uri='
            'dmx.core.child&others_role_type_uri=dmx.core.parent&'
            'others_topic_type_uri=dmx.workspaces.workspace' %
@@ -480,7 +507,9 @@ def create_topicmap(tm_name, tm_type='dmx.topicmaps.topicmap', workspace=None):
         print("ERROR! Map '%s' exists." % tm_name)
         sys.exit(1)
     else:
-        url = ('topicmap?name=%s&topicmap_type_uri=%s' % (tm_name.replace(' ', '%20'), tm_type))
+        ## All string replacement for url is moved to get_response
+        # url = ('topicmap?name=%s&topicmap_type_uri=%s' % (tm_name.replace(' ', '%20'), tm_type))
+        url = ('topicmaps?name="%s"&topicmap_type_uri=%s' % (tm_name, tm_type))
         # for the moment, this requires an empty json string exactly like this
         data = {"": ""}
         try:
@@ -509,14 +538,17 @@ def create_ws(workspace, ws_type, uri=''):
     ### `uri` is optional.
     if not uri:
         uri = workspace.lower()+'.uri'
-    url = ('workspace?name=%s&uri=%s&sharing_mode_uri=dmx.workspaces.%s' %
-           (workspace.replace(' ', '%20'), uri.replace(' ', '%20'), ws_type))
+    ## Moved all string replacements to get_response
+    #url = ('workspaces?name=%s&uri=%s&sharing_mode_uri=dmx.workspaces.%s' %
+    #       (workspace.replace(' ', '%20'), uri.replace(' ', '%20'), ws_type))
+    url = ('workspaces?name=%s&uri=%s&sharing_mode_uri=dmx.workspaces.%s' %
+           (workspace, uri, ws_type))
     topic_id = write_request(url, expect_json=True)["id"]
     # ~ response = write_request(url, expect_json=True)
     return(topic_id)
 
 
-def create_member(workspace=None, dm_user='testuser'):
+def create_member(workspace=None, dm_user='username'):
     """
     This function creates a user memebrship association for
     the workspace on the server.
@@ -528,6 +560,8 @@ def create_member(workspace=None, dm_user='testuser'):
         print("CREATE MEMBER : Creating Workspace membership for user %s in %s" %
               (dm_user, workspace))
     wsid = get_ws_id(workspace)
+    ## TODO: Fix this
+    ## url = ('accesscontrol/user/%s/workspace/%s' %
     url = ('accesscontrol/user/%s/workspace/%s' %
            (dm_user, wsid))
     # topic_id = write_request(url)
@@ -603,7 +637,7 @@ def reveal_topic(workspace, map_id, topic_id, x_val=0, y_val=0, pinned=False):
         pinned = str('true')
     else:
         pinned = str('false')
-    url = ('topicmap/%s/topic/%s' % (map_id, topic_id))
+    url = ('topicmaps/%s/topic/%s' % (map_id, topic_id))
     payload = json.loads(
         '{ "dmx.topicmaps.x": %s, "dmx.topicmaps.y": %s, \
         "dmx.topicmaps.visibility": true, "dmx.topicmaps.pinned": %s }'
@@ -858,7 +892,7 @@ def get_items(topictype):
     returns the items, if exists
     """
     dm_items = {} # for dictionary
-    data = get_data('topic/by_type/%s' % topictype)
+    data = get_data('topics/type/%s' % topictype)
     try:
         total = len(data)
     except:
@@ -878,7 +912,7 @@ def get_related(topic_id):
     This function fetches related topics according to topic_id from
     the server and returns the data.
     """
-    url = ('core/topic/%s/related_topics?' % topic_id)
+    url = ('core/topic/%s/related-topics?' % topic_id)
     return(read_request(url))
 
 
