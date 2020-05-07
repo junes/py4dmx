@@ -27,14 +27,6 @@ jpn - 20170231
 
 """
 
-## Adopting to DM5API (20200605)
-## 1. renamed workspace to workspaces
-## 2. renamed topic to topics
-## 3. renamed by_type to type
-## 4. relataed_topics to related-topics
-
-
-
 from __future__ import print_function
 
 __author__ = 'Juergen Neumann <juergen@dmx.systems>'
@@ -162,7 +154,6 @@ def read_dmx_config_properties_file(config_file='config.properties'):
     return
 
 
-# ~ def check_payload(payload={}):
 def check_payload(payload=None):
     """
     This function checks the payload to be send to server and makes sure
@@ -233,36 +224,26 @@ def query_yes_no(question, default="no"):
                              "(or 'y' or 'n').\n")
 
 
-def is_json(data, expect_json=True):
+def check_response(data):
     """
     This function returns a nicely formatted JSON string, if possible.
     """
-    ## TODO
-    ## this function should not be called at all if data is empty.
-    ## defining response (next line) should not be neccessary.
-    response=''
     ##
     try:
         response = json.loads(data)
     except:
         if VERBOSE:
-            print("RESPONSE is not JSON (IS JSON: except)")
-            print("RESPONSE TYPE = %s" % type(response))
-            print('RESPONSE is "%s".' % response)
-            print('RESPONSE return "OK".')
+            print('CHECK RESPONSE : is not JSON (CHECK RESPONSE exception!)')
+            print('CHECK RESPONSE : TYPE = %s' % type(response))
+            print('CHECK RESPONSE : is "%s".' % response)
+            print('CHECK RESPONSE : return "OK".')
         return("OK")
     else:
         if VERBOSE:
-            print("RESPONSE is JSON")
-            print("RESPONSE TYPE = %s" % type(response))
+            print('CHECK RESPONSE : is JSON')
+            print("CHECK RESPONSE : TYPE = %s" % type(response))
             pretty_print(response)
-        if expect_json:
-            return(response)
-        else:
-            if VERBOSE:
-                print('RESPONSE is "%s".' % response)
-                print('RESPONSE return "OK".')
-            return("OK")
+        return(response)
 
 
 def get_base_64():
@@ -287,10 +268,10 @@ def set_host_url(url):
     global config
     host_url = urllib.parse.urlparse(url)
     if VERBOSE:
-        print("SET HOST URL URLPARSE : Protocol: %s" % host_url.scheme)
-        print("SET HOST URL URLPARSE : Server: %s" % host_url.hostname)
-        print("SET HOST URL URLPARLE : Port: %s" % host_url.port)
-        print("SET HOST URL URLPARSE : Path: %s" % host_url.path)
+        print("SET HOST URL URLPARSE : Protocol = %s" % host_url.scheme)
+        print("SET HOST URL URLPARSE : Server = %s" % host_url.hostname)
+        print("SET HOST URL URLPARLE : Port = %s" % host_url.port)
+        print("SET HOST URL URLPARSE : Path = %s" % host_url.path)
     config.set('Connection', 'protocol', host_url.scheme)
     config.set('Connection', 'server', host_url.hostname)
     if host_url.scheme == 'https' and host_url.port is None:
@@ -317,7 +298,6 @@ def get_host_url():
     server = config.get('Connection', 'server')
     port = config.get('Connection', 'port')
     path = config.get('Connection', 'path')
-    # ~ host_url = '%s://%s:%s%s' % (protocol, server, port, path.rstrip('/'))
     host_url = '%s://%s:%s%s' % (protocol, server, port, path)
     if VERBOSE:
         print('HOST_URL : %s' % host_url)
@@ -330,7 +310,7 @@ def get_response(url='', payload=None, wsid=None, method='GET'):
     """
     jsessionid = get_session_id()
     host_url = get_host_url()
-    ## Do all relevant string replacements for url here
+    ## Do all relevant string replacements for url here and only here!
     url = host_url + (url.replace(' ', '%20').replace('"', '%22'))
     req = urllib.request.Request(url)
     if payload is None:
@@ -351,12 +331,22 @@ def get_response(url='', payload=None, wsid=None, method='GET'):
     try:
         response = urllib.request.urlopen(req, payload).read()
     except urllib.error.HTTPError as error_message:
-        print('Request Data Error: '+str(error_message))
+        print('GET RESPONSE : Request Data Error: '+str(error_message))
+        sys.exit(1)
     else:
         if VERBOSE:
-            print("RESPONSE TYPE = %s, len = %s" % (type(response), len(response)))
-    return(response)
-
+            print("GET RESPONSE : TYPE = %s, len = %s" % (type(response), len(response)))
+        if len(response)==0 and method=='POST':
+            if VERBOSE:
+                print('GET RESPONSE : return "OK" (%s)' % method)
+            return("OK")
+        elif len(response)!=0 and method=='DELETE':
+            if VERBOSE:
+                print('GET RESPONSE : return "OK" (%s)' % method)
+            return("OK")
+        else:
+            response=check_response(response)
+            return(response)
 
 def get_session_id():
     """
@@ -397,10 +387,12 @@ def read_request(url):
     """
     Reads the data from a given URL.
     """
+    ## TODO
+    ## Replace read_request with get_response
+    ##
     if VERBOSE:
         print("READ REQUEST : url = %s" % url)
-    request = get_response(url)
-    response = is_json(request, expect_json=True)
+    response = get_response(url)
     return(response)
 
 
@@ -408,14 +400,16 @@ def write_request(url, payload=None, workspace=None, method='POST', expect_json=
     """
     Writes the data to a given URL.
     """
+    ## TODO
+    ## Replace write_request with get_response
+    ##
     ## if workspace in None, the default workspace should come from config:
     if workspace is None:
         workspace = config.get('Connection', 'workspace')
     wsid = get_ws_id(workspace)
     if VERBOSE:
         print("WRITE REQUEST : workspace = %s has wsid = %s" % (workspace, wsid))
-    request = get_response(url, payload, wsid, method)
-    response = is_json(request, expect_json)
+    response = get_response(url, payload, wsid, method)
     return(response)
 
 
@@ -426,21 +420,10 @@ def get_ws_id(workspace):
     """
     if VERBOSE:
         print("GET_WS_ID : Searching Workspace ID for workspace %s" % workspace)
-    # url = ('core/topic?type_uri=dmx.workspaces.workspace_name'
-    #       '&query="%s"' % workspace.replace(' ', '%20'))
-
-    ## NEU: core/topics/query/"%s"?topic_type_uri=dmx.workspaces.workspace_name
-    ## " => %22
-    ## % => '%%'
-
-    ## move all string replacements to get_response
-    #url = ('core/topics/query/%%22%s%%22?topic_type_uri=dmx.workspaces.workspace_name'
-    #       % workspace.replace(' ', '%20'))
     url = ('core/topics/query/"%s"?topic_type_uri=dmx.workspaces.workspace_name'
            % workspace)
     ## find the workspace_name in the result
-    request = get_response(url)
-    response = is_json(request, expect_json=True)
+    response = get_response(url)
     topics = response["topics"]
     for topic in topics:
         ## find the workspace_name in the result
@@ -448,15 +431,14 @@ def get_ws_id(workspace):
             wsnameid = (topic['id'])
             break
     if VERBOSE:
-        print("WS NAME ID = %s" % wsnameid)
-    ## TODO
+        print("GET WS ID : wsnameid = %s" % wsnameid)
     url = ('core/topic/%s/related-topics'
            '?assoc_type_uri=dmx.core.composition&my_role_type_uri='
            'dmx.core.child&others_role_type_uri=dmx.core.parent&'
            'others_topic_type_uri=dmx.workspaces.workspace' %
            str(wsnameid))
-    request = get_response(url)
-    response = is_json(request, expect_json=True)
+    response = get_response(url)
+    ## TODO - check if still needed:
     ## The following is a workarround to fix
     ## Pylint3 Error: Sequence index is not an int, slice,
     ## or instance with __index__ (invalid-sequence-index)
@@ -474,7 +456,7 @@ def create_user(dm_user='testuser', dm_pass='testpass'):
     ## check if username exits
     users = list(get_items('dmx.accesscontrol.username').values())
     if VERBOSE:
-        print("USERS: %s" % users)
+        print("CREATE USER : users=%s" % users)
     if dm_user in users:
         print("ERROR! User '%s' exists." % dm_user)
         sys.exit(1)
@@ -486,8 +468,8 @@ def create_user(dm_user='testuser', dm_pass='testpass'):
         payload = {'username' : dm_user, 'password' : dm_pass}
         topic_id = write_request(url, payload)["id"]
         if VERBOSE:
-            print("TOPIC_ID = %s" % topic_id)
-            print("New user '%s' was created with topic_id %s." % (dm_user, topic_id))
+            print("CREATE USER : topic_id = %s" % topic_id)
+            print("CREATE USER : New user '%s' was created with topic_id %s." % (dm_user, topic_id))
         return(topic_id)
 
 
@@ -501,32 +483,18 @@ def create_topicmap(tm_name, tm_type='dmx.topicmaps.topicmap', workspace=None):
     ## check if topicmap exits (globally!!!)
     maps = list(get_items('dmx.topicmaps.topicmap').values())
     if VERBOSE:
-        print("CREATE TOPICMAP: %s" % tm_name)
-        print("TOPICMAPS: %s" % maps)
+        print("CREATE TOPICMAP : %s" % tm_name)
+        print("CREATE TOPICMAP : maps = %s" % maps)
     if tm_name in maps:
         print("ERROR! Map '%s' exists." % tm_name)
         sys.exit(1)
     else:
-        ## All string replacement for url is moved to get_response
-        # url = ('topicmap?name=%s&topicmap_type_uri=%s' % (tm_name.replace(' ', '%20'), tm_type))
         url = ('topicmaps?name="%s"&topicmap_type_uri=%s' % (tm_name, tm_type))
-        # for the moment, this requires an empty json string exactly like this
-        data = {"": ""}
-        try:
-            payload = json.loads(json.dumps(data, indent=3, sort_keys=True))
-            if VERBOSE:
-                print("LenPayload: %s" % len(payload))
-        except:
-            print("ERROR! Could not read Payload. Not JSON?")
-            sys.exit(1)
-
-        ## debug
-        if VERBOSE:
-            pretty_print(payload)
-
-        #topic_id = write_request(url)["id"]
+        ## for the moment, this requires an empty json string exactly like this
+        payload = json.loads('{"": ""}')
         topic_id = write_request(url, payload, workspace)["id"]
-        # print("New topicmap '%s' was created with topic_id %s." % (tm_name, topic_id))
+        if VERBOSE:
+            print("New topicmap '%s' was created with topic_id %s." % (tm_name, topic_id))
         return(topic_id)
 
 
@@ -535,16 +503,12 @@ def create_ws(workspace, ws_type, uri=''):
     This function creates a workspace with workspace uri
     (needed for id) on the server.
     """
-    ### `uri` is optional.
+    ## `uri` is optional.
     if not uri:
         uri = workspace.lower()+'.uri'
-    ## Moved all string replacements to get_response
-    #url = ('workspaces?name=%s&uri=%s&sharing_mode_uri=dmx.workspaces.%s' %
-    #       (workspace.replace(' ', '%20'), uri.replace(' ', '%20'), ws_type))
     url = ('workspaces?name=%s&uri=%s&sharing_mode_uri=dmx.workspaces.%s' %
            (workspace, uri, ws_type))
     topic_id = write_request(url, expect_json=True)["id"]
-    # ~ response = write_request(url, expect_json=True)
     return(topic_id)
 
 
@@ -560,11 +524,8 @@ def create_member(workspace=None, dm_user='username'):
         print("CREATE MEMBER : Creating Workspace membership for user %s in %s" %
               (dm_user, workspace))
     wsid = get_ws_id(workspace)
-    ## TODO: Fix this
-    ## url = ('accesscontrol/user/%s/workspace/%s' %
     url = ('accesscontrol/user/%s/workspace/%s' %
            (dm_user, wsid))
-    # topic_id = write_request(url)
     response = write_request(url, expect_json=False)
     return(response)
 
@@ -580,8 +541,6 @@ def create_note(title, body, workspace=None):
     if VERBOSE:
         print("CREATE NOTE : Creating a new note %s with text body %s in workspace %s" %
               (title, body, workspace))
-
-    # ~ wsid = get_ws_id(workspace)
     url = 'core/topic/'
     payload = json.dumps(
         {
@@ -659,7 +618,7 @@ def import_vcard(vcard_file, workspace=None):
         print("PYTHON VERSION : %s" % version)
     if int(version[0]) < 3 or int(version[1]) < 6:
         print('SORRY! VCARD option requires Python 3.6 or higher.')
-        # make pylint3 happy:
+        ## make pylint3 happy:
         ModuleNotFoundError = ''
         sys.exit(0)
     else:
@@ -967,7 +926,6 @@ def pretty_print(data):
     """
     This function just prints the json data in a pretty way. :)
     """
-    # print("Data: %s" % type(data))
     print(json.dumps(data, indent=3, sort_keys=True))
     return
 
@@ -1251,7 +1209,7 @@ def main(args):
     ## login is next, as one may want to manually set who logs in
     if argsdict['login']:
         if (argsdict['user'] != None) and (argsdict['password'] != None):
-            config.set('Credentials', 'authname', argsdict['user']) # usualy the admin password
+            config.set('Credentials', 'authname', argsdict['user']) # usualy the admin
             config.set('Credentials', 'password', argsdict['password']) # usualy the admin password
         else:
             print("ERROR! Missing username and/or password.")
@@ -1263,13 +1221,10 @@ def main(args):
         ##
         if VERBOSE:
             print("ARGSDICT FILE: Importing json data from file %s" % (argsdict['file']))
-        # ~ payload = import_payload(str(argsdict['file']))
         payload = read_file(str(argsdict['file']))
         if VERBOSE:
             print("JSON DATA FROM FILE:\n%s" % payload)
-        # payload = payload.replace('\n', '')
         payload = json.loads(payload)
-        payload = check_payload(payload)
         payload_len = len(payload)
         if argsdict['workspace']:
             if payload_len > 0:
@@ -1302,7 +1257,9 @@ def main(args):
             print("ERROR! Missing username or password.")
 
     if argsdict['create_topicmap']:
-    # still missing: set type of new map via option (default is topicmap)
+        ## TODO
+        ## still missing: set type of new map via option (default is topicmap)
+        ##
         argsdict['m_type'] = 'dmx.topicmaps.topicmap'
         if (argsdict['create_topicmap'] != None) and (argsdict['workspace'] != None):
             data = create_topicmap(
@@ -1334,7 +1291,9 @@ def main(args):
         pretty_print(data)
 
     if argsdict['workspace'] and (argsdict['ws_type']) and not argsdict['membership']:
-        # Does not work with 'private' for now!
+        ## TODO - chekc if still true:
+        ## Does not work with 'private' for now!
+        ##
         if argsdict['ws_type'] in ["confidential", "collaborative", "public", "common"]:
             if VERBOSE:
                 print("Creating new %s workspace %s" %

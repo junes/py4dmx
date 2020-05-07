@@ -37,7 +37,7 @@ user_login () {
     if [ ${VERBOSE} ]; then
         echo "INFO: Login new user '${USER}' with password '${PASS}'."
     fi
-    RESULT="$( ${PY4DMX} ${VERBOSE} -s -u "${USER}" -p "${PASS}" )"
+    RESULT="$( ${PY4DMX} ${VERBOSE} -l -u "${USER}" -p "${PASS}" -s )"
     echo "${RESULT}"
 }
 
