@@ -2,6 +2,7 @@ stages:
   - test
   - deploy
 
+# 1) Tests every commit on every branch
 test:
   stage: test
   script:
@@ -26,6 +27,7 @@ manual_test:
     - tags
   when: manual
 
+# 2) Copies DEVELOPMENT builds on 'master' branch into download.dmx.systems/ci/ directory
 copy_to_ci:
   stage: deploy
   script:
@@ -38,3 +40,19 @@ copy_to_ci:
     - mv "${CI_PROJECT_NAME}.zip" ${DESTDIR}/${DESTZIPFILE}  
   only:
     - master
+    - tags
+
+# 3) Copies tagged RELEASES into download.dmx.systems/contributions/ directory
+copy-to-release:
+  stage: deploy
+  script:
+    - RELEASEDIR='/var/www/download.dmx.systems/contributions'
+    - DESTDIR="${RELEASEDIR}/${CI_PROJECT_NAME}"
+    - DESTZIPFILE="${CI_PROJECT_NAME}-${CI_COMMIT_TAG}.zip"
+    - if [ ! -d  ${DESTDIR} ]; then mkdir ${DESTDIR}; fi
+    - zip "${CI_PROJECT_NAME}.zip" * -x "*/.*"
+    - mv "${CI_PROJECT_NAME}.zip" ${DESTDIR}/${DESTZIPFILE}  
+  dependencies:
+    - test
+  only:
+    - tags
