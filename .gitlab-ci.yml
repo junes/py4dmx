@@ -28,6 +28,8 @@ manual_test:
 
 copy_to_ci:
   stage: deploy
+  script:
+    - ls -la
   artifacts:
     path: target/*.zip
     name: "${CI_PROJECT_NAME}_${CI_BUILD_REF_NAME}"
