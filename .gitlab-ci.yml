@@ -29,12 +29,12 @@ manual_test:
 copy_to_ci:
   stage: deploy
   script:
-    - mkdir target
-    - zip "target/${CI_PROJECT_NAME}.zip" * -x "*/.*"
-  artifacts:
-    paths: 
-      - target/*.zip
-    # name: "${CI_PROJECT_NAME}_${CI_BUILD_REF_NAME}"
-    name: "${CI_PROJECT_NAME}"
+    - CIDIR='/var/www/download.dmx.systems/ci'
+    - DESTDIR="${CIDIR}/${CI_PROJECT_NAME}"
+    - NUNC="$( date +%F )"
+    - DESTZIPFILE="${CI_PROJECT_NAME}_${NUNC}_${CI_PIPELINE_ID}.zip"
+    - if [ ! -d  ${DESTDIR} ]; then mkdir ${DESTDIR}; fi
+    - zip "${CI_PROJECT_NAME}.zip" * -x "*/.*"
+    - mv "${CI_PROJECT_NAME}.zip" ${DESTDIR}/${DESTZIPFILE}  
   only:
     - master
