@@ -27,6 +27,7 @@ manual_test:
   when: manual
 
 copy_to_ci:
+  stage: deploy
   artifacts:
     path: target/*.zip
     name: "${CI_PROJECT_NAME}_${CI_BUILD_REF_NAME}"
