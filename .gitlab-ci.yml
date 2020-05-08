@@ -37,7 +37,10 @@ copy_to_ci:
     - DESTZIPFILE="${CI_PROJECT_NAME}_${NUNC}_${CI_PIPELINE_ID}.zip"
     - if [ ! -d  ${DESTDIR} ]; then mkdir ${DESTDIR}; fi
     - zip "${CI_PROJECT_NAME}.zip" * -x "*/.*"
-    - mv "${CI_PROJECT_NAME}.zip" ${DESTDIR}/${DESTZIPFILE}  
+    - mv "${CI_PROJECT_NAME}.zip" ${DESTDIR}/${DESTZIPFILE}
+    - ln -sf  ${DESTDIR}/${DESTZIPFILE} ${DESTDIR}/${CI_PROJECT_NAME}-latest.zip
+  dependencies:
+    - test
   only:
     - master
     - tags
