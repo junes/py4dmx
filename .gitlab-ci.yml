@@ -29,7 +29,7 @@ manual_test:
 copy_to_ci:
   stage: deploy
   script:
-    - zip "target/${CI_PROJECT_NAME}.zip" "./*" -x "*/.*"
+    - zip "target/${CI_PROJECT_NAME}.zip" "*" -x "*/.*"
   artifacts:
     paths: 
       - target/*.zip
