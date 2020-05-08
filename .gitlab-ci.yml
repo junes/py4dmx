@@ -32,7 +32,7 @@ copy_to_ci:
     - ls -la
   artifacts:
     paths: 
-      - target/*.zip
+      - target/
     name: "${CI_PROJECT_NAME}_${CI_BUILD_REF_NAME}"
   only:
     - master
