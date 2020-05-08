@@ -43,7 +43,6 @@ copy_to_ci:
     - test
   only:
     - master
-    - tags
 
 # 3) Copies tagged RELEASES into download.dmx.systems/contributions/ directory
 copy-to-release:
