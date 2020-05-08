@@ -1,14 +1,8 @@
 stages:
-  - deploy
   - test
+  - deploy
 
-deploy:
-  stage: deploy
-  script:
-    - echo "deploy"
-  only:
-    - master
-  
+# 1) Tests every commit on every branch
 test:
   stage: test
   script:
@@ -19,7 +13,7 @@ test:
     - ./test_dmx-py.sh
   only:
     - master
-
+    - tags
 
 manual_test:
   stage: test
@@ -30,4 +24,37 @@ manual_test:
     - ./test_dmx-py.sh
   only:
     - master
+    - tags
   when: manual
+
+# 2) Copies DEVELOPMENT builds on 'master' branch into download.dmx.systems/ci/ directory
+copy_to_ci:
+  stage: deploy
+  script:
+    - CIDIR='/var/www/download.dmx.systems/ci'
+    - DESTDIR="${CIDIR}/${CI_PROJECT_NAME}"
+    - NUNC="$( date +%F )"
+    - DESTZIPFILE="${CI_PROJECT_NAME}_${NUNC}_${CI_PIPELINE_ID}.zip"
+    - if [ ! -d  ${DESTDIR} ]; then mkdir ${DESTDIR}; fi
+    - zip "${CI_PROJECT_NAME}.zip" * -x "*/.*"
+    - mv "${CI_PROJECT_NAME}.zip" ${DESTDIR}/${DESTZIPFILE}
+    - ln -sf  ${DESTDIR}/${DESTZIPFILE} ${DESTDIR}/${CI_PROJECT_NAME}-latest.zip
+  dependencies:
+    - test
+  only:
+    - master
+
+# 3) Copies tagged RELEASES into download.dmx.systems/contributions/ directory
+copy-to-release:
+  stage: deploy
+  script:
+    - RELEASEDIR='/var/www/download.dmx.systems/contributions'
+    - DESTDIR="${RELEASEDIR}/${CI_PROJECT_NAME}"
+    - DESTZIPFILE="${CI_PROJECT_NAME}-${CI_COMMIT_TAG}.zip"
+    - if [ ! -d  ${DESTDIR} ]; then mkdir ${DESTDIR}; fi
+    - zip "${CI_PROJECT_NAME}.zip" * -x "*/.*"
+    - mv "${CI_PROJECT_NAME}.zip" ${DESTDIR}/${DESTZIPFILE}  
+  dependencies:
+    - test
+  only:
+    - tags
