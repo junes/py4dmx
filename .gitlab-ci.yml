@@ -1,14 +1,7 @@
 stages:
-  - deploy
   - test
+  - deploy
 
-deploy:
-  stage: deploy
-  script:
-    - echo "deploy"
-  only:
-    - master
-  
 test:
   stage: test
   script:
@@ -19,7 +12,7 @@ test:
     - ./test_dmx-py.sh
   only:
     - master
-
+    - tags
 
 manual_test:
   stage: test
@@ -30,4 +23,12 @@ manual_test:
     - ./test_dmx-py.sh
   only:
     - master
+    - tags
   when: manual
+
+copy_to_ci:
+  artifacts:
+    path: target/*.zip
+    name: "${CI_PROJECT_NAME}_${CI_BUILD_REF_NAME}"
+  only:
+    - master
