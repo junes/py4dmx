@@ -68,8 +68,17 @@ Version: 0.3
 **0.3** -- Aug 13, 2020
 
 * Chores:
-    * adopt to DM5.0
+    * Adopted to DM5.0 API changes
 
-**0.2**
+**0.2** -- May 8, 2020
+
+* Chores:
+    * Adopted to latest DM5 API changes 
 
 **0.1**
+
+* Features:
+    * new command line option: --send-post | -SP 
+* Chores:
+    * Code clean-up
+    * Revised version numbers
