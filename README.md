@@ -60,8 +60,8 @@ Some examples:
 Copyright (c) 2019 DMX Systems <https://dmx.systems>    
 License: GNU General Public License Version 3    
 Author: Juergen Neumann <juergen@dmx.systems>    
-Source: https://git.dmx.systems/dmx-contrib/py4dmx
-Version: 0.3
+Source: https://git.dmx.systems/dmx-contrib/py4dmx   
+Version: 0.3   
 
 ## Version History
 
