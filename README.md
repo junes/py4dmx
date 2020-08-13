@@ -61,3 +61,15 @@ Copyright (c) 2019 DMX Systems <https://dmx.systems>
 License: GNU General Public License Version 3    
 Author: Juergen Neumann <juergen@dmx.systems>    
 Source: https://git.dmx.systems/dmx-contrib/py4dmx
+Version: 0.3
+
+## Version History
+
+**0.3** -- Aug 13, 2020
+
+* Chores:
+    * adopt to DM5.0
+
+**0.2**
+
+**0.1**

@@ -32,7 +32,7 @@ from __future__ import print_function
 __author__ = 'Juergen Neumann <juergen@dmx.systems>'
 __copyright__ = 'Copyright 2019, DMX Systems <https://dmx.systems>'
 __license__ = 'GPL 3+'
-__version__ = '0.2'
+__version__ = '0.3'
 __maintainer__ = 'Juergen Neumann'
 __email__ = 'juergen@dmx.systems'
 __status__ = 'Development'
@@ -420,7 +420,7 @@ def get_ws_id(workspace):
     """
     if VERBOSE:
         print("GET_WS_ID : Searching Workspace ID for workspace %s" % workspace)
-    url = ('core/topics/query/"%s"?topic_type_uri=dmx.workspaces.workspace_name'
+    url = ('core/topics/query/"%s"?topicTypeUri=dmx.workspaces.workspace_name'
            % workspace)
     ## find the workspace_name in the result
     response = get_response(url)
@@ -433,9 +433,9 @@ def get_ws_id(workspace):
     if VERBOSE:
         print("GET WS ID : wsnameid = %s" % wsnameid)
     url = ('core/topic/%s/related-topics'
-           '?assoc_type_uri=dmx.core.composition&my_role_type_uri='
-           'dmx.core.child&others_role_type_uri=dmx.core.parent&'
-           'others_topic_type_uri=dmx.workspaces.workspace' %
+           '?assocTypeUri=dmx.core.composition&myRoleTypeUri='
+           'dmx.core.child&othersRoleTypeUri=dmx.core.parent&'
+           'othersTopicTypeUri=dmx.workspaces.workspace' %
            str(wsnameid))
     response = get_response(url)
     ## TODO - check if still needed:
@@ -462,7 +462,7 @@ def create_user(dm_user='testuser', dm_pass='testpass'):
         sys.exit(1)
     else:
         ## create user
-        url = 'accesscontrol/user_account'
+        url = 'access-control/user-account'
         hash_object = hashlib.sha256(dm_pass.encode('UTF-8'))
         dm_pass = '-SHA256-'+hash_object.hexdigest()
         payload = {'username' : dm_user, 'password' : dm_pass}
@@ -489,7 +489,7 @@ def create_topicmap(tm_name, tm_type='dmx.topicmaps.topicmap', workspace=None):
         print("ERROR! Map '%s' exists." % tm_name)
         sys.exit(1)
     else:
-        url = ('topicmaps?name="%s"&topicmap_type_uri=%s' % (tm_name, tm_type))
+        url = ('topicmaps?name="%s"&topicmapTypeUri=%s' % (tm_name, tm_type))
         ## for the moment, this requires an empty json string exactly like this
         payload = json.loads('{"": ""}')
         topic_id = write_request(url, payload, workspace)["id"]
@@ -506,7 +506,7 @@ def create_ws(workspace, ws_type, uri=''):
     ## `uri` is optional.
     if not uri:
         uri = workspace.lower()+'.uri'
-    url = ('workspaces?name=%s&uri=%s&sharing_mode_uri=dmx.workspaces.%s' %
+    url = ('workspaces?name=%s&uri=%s&sharingModeUri=dmx.workspaces.%s' %
            (workspace, uri, ws_type))
     topic_id = write_request(url, expect_json=True)["id"]
     return(topic_id)
@@ -524,7 +524,7 @@ def create_member(workspace=None, dm_user='username'):
         print("CREATE MEMBER : Creating Workspace membership for user %s in %s" %
               (dm_user, workspace))
     wsid = get_ws_id(workspace)
-    url = ('accesscontrol/user/%s/workspace/%s' %
+    url = ('access-control/user/%s/workspace/%s' %
            (dm_user, wsid))
     response = write_request(url, expect_json=False)
     return(response)
@@ -880,7 +880,7 @@ def get_creator(topic_id):
     This function fetches related topics according to topic_id from
     the server and returns the data.
     """
-    url = ('accesscontrol/object/%s/creator' % topic_id)
+    url = ('access-control/object/%s/creator' % topic_id)
     return(read_request(url))
 
 
@@ -889,7 +889,7 @@ def get_modifier(topic_id):
     This function fetches related topics according to topic_id from
     the server and returns the data.
     """
-    url = ('accesscontrol/object/%s/modifier' % topic_id)
+    url = ('access-control/object/%s/modifier' % topic_id)
     return(read_request(url))
 
 
@@ -907,7 +907,7 @@ def get_ws_owner(workspace_id):
     This function fetches the owner of a workspace id from
     the server and returns the data.
     """
-    url = ('accesscontrol/workspace/%s/owner' % workspace_id)
+    url = ('access-control/workspace/%s/owner' % workspace_id)
     return(read_request(url))
 
 
