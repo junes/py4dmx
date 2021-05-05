@@ -316,8 +316,9 @@ def get_response(url='', payload=None, wsid=None, method='GET'):
     if payload is None:
         payload = '{}'.encode('utf-8')
     else:
-        payload = check_payload(payload)
-        payload = payload.encode('utf-8')
+        # payload = payload.encode('utf-8')
+        payload = json.dumps(payload).encode('utf-8')
+        print(payload)
     if VERBOSE:
         print("GET RESPONSE : Calling %s with method %s" % (url, method))
         print("GET RESPONSE : JSESSIONID = %s, wsid = %s" % (jsessionid, wsid))
@@ -449,6 +450,45 @@ def get_ws_id(workspace):
     return(topic_id)
 
 
+def get_topicmap_id(tm_name):
+    """
+    This function gets the Topic ID for a topicmap by its name.
+    It's much faster to get it by its uri, if present.
+    """
+    if VERBOSE:
+        print("GET_TOPICMAP_ID : Searching Topic ID for topicmap %s" % tm_name)
+    url = ('core/topics/query/"%s"?topicTypeUri=dmx.topicmaps.topicmap_name'
+           % tm_name)
+    ## find the workspace_name in the result
+    response = get_response(url)
+    topics = response["topics"]
+    for topic in topics:
+        ## find the workspace_name in the result
+        if topic['typeUri'] == 'dmx.topicmaps.topicmap_name':
+            tm_name_id = (topic['id'])
+            # print('topicmap_id=', topic_id)
+            break
+    if VERBOSE:
+        print("GET_TOPICMAP_ID : tm_name_id = %s" % tm_name_id)
+    url = ('core/topic/%s/related-topics'
+           '?assocTypeUri=dmx.core.composition&myRoleTypeUri='
+           'dmx.core.child&othersRoleTypeUri=dmx.core.parent&'
+           'othersTopicTypeUri=dmx.topicmaps.topicmap' %
+           str(tm_name_id))
+    response = get_response(url)
+    ## TODO - check if still needed:
+    ## The following is a workarround to fix
+    ## Pylint3 Error: Sequence index is not an int, slice,
+    ## or instance with __index__ (invalid-sequence-index)
+    topic = json.loads(json.dumps(response[0]))
+    topic_id = topic['id']
+    if VERBOSE:
+        print("WS ID = %s" % topic_id)
+    if VERBOSE:
+        print("MAP ID = %s" % topic_id)
+    return(topic_id)
+
+
 def create_user(dm_user='testuser', dm_pass='testpass'):
     """
     This function creates a new user on the server.
@@ -486,16 +526,17 @@ def create_topicmap(tm_name, tm_type='dmx.topicmaps.topicmap', workspace=None):
         print("CREATE TOPICMAP : %s" % tm_name)
         print("CREATE TOPICMAP : maps = %s" % maps)
     if tm_name in maps:
-        print("ERROR! Map '%s' exists." % tm_name)
-        sys.exit(1)
+        topic_id = get_topicmap_id(tm_name)
+        if VERBOSE:
+            print("INFO: Map '%s' exists (ID %s)." % (tm_name, topic_id))
     else:
-        url = ('topicmaps?name="%s"&topicmapTypeUri=%s' % (tm_name, tm_type))
+        url = ('topicmaps?name=%s&topicmapTypeUri=%s' % (tm_name, tm_type))
         ## for the moment, this requires an empty json string exactly like this
         payload = json.loads('{"": ""}')
         topic_id = write_request(url, payload, workspace)["id"]
         if VERBOSE:
             print("New topicmap '%s' was created with topic_id %s." % (tm_name, topic_id))
-        return(topic_id)
+    return(topic_id)
 
 
 def create_ws(workspace, ws_type, uri=''):
@@ -573,6 +614,21 @@ def send_data(payload, workspace=None):
     return(topic_id)
 
 
+def create_assoc(payload, workspace=None):
+    """
+    This function sends the assocs according to payload to
+    the workspace name on the server.
+    """
+    ## if workspace in None, the default workspace should come from config:
+    if workspace is None:
+        workspace = config.get('Connection', 'workspace')
+    if VERBOSE:
+        print("SEND DATA: sending data to workspace '%s'" % workspace)
+    url = 'core/assoc/'
+    assoc_id = write_request(url, payload, workspace)["id"]
+    return(assoc_id)
+
+
 def send_post(url, workspace=None):
     """
     This function sends a POST request to custom (a plugin) REST resource.
@@ -604,6 +660,20 @@ def reveal_topic(workspace, map_id, topic_id, x_val=0, y_val=0, pinned=False):
     )
     response = write_request(url, payload, workspace, expect_json=False)
     return(response)
+
+
+def reveal_assoc(map_id, assoc_id):
+    """
+    This function reveales an assoc (id) on a topicmap (id)
+    """
+    # payload = {"": ""}
+    url = ('topicmaps/%s/assoc/%s' % (map_id, assoc_id))
+    payload = json.loads(
+        '{ "dmx.topicmaps.visibility": true, "dmx.topicmaps.pinned": false }'
+    )
+    response = write_request(url, payload, expect_json=False)
+    return(response)
+
 
 
 def import_vcard(vcard_file, workspace=None):
