@@ -1258,8 +1258,16 @@ def main(args):
     ## create initial config instance from ConfigParser with defaults
     create_default_config()
 
-    ## read config_properties must be first, cause it set the default setting for config
-    if argsdict['config_properties']:
+    ## read config_properties must be first, because it sets the default setting for config
+    ## unless ALL required params are entered via command line.
+    if (
+        argsdict['URL'] and
+        argsdict['login'] and
+        argsdict['user'] and
+        (argsdict['password'] or argsdict['password']=="")
+    ):
+        pass
+    elif argsdict['config_properties']:
         read_dmx_config_properties_file(argsdict['config_properties'])
     else:
         read_default_config_file()
@@ -1273,8 +1281,9 @@ def main(args):
     if argsdict['URL']:
         if argsdict['URL'] is not None:
             set_host_url(argsdict['URL'])
-        else:
-            print("ERROR! Missing username of new member or missing workspace name.")
+        # else:
+        #    ## Todo: why do we refer to username or workspace name here at all?
+        #    print("ERROR! Missing username of new member or missing workspace name.")
 
     ## login is next, as one may want to manually set who logs in
     if argsdict['login']:
