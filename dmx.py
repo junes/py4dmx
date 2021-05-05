@@ -414,6 +414,17 @@ def write_request(url, payload=None, workspace=None, method='POST', expect_json=
     return(response)
 
 
+def delete_request(url):
+    """
+    Sends the request with method 'DELETE'.
+    """
+    if VERBOSE:
+        print("DELETE REQUEST : url = %s" % url)
+    # response = get_response(url, payload=None, wsid=None, method='DELETE')
+    response = get_response(url, method='DELETE')
+    return(response)
+
+
 def get_ws_id(workspace):
     """
     This function gets the workspace ID for a workspace by its name.
@@ -988,7 +999,7 @@ def delete_topic(topic_id):
     if VERBOSE:
         print("DELETE TOPIC : deleting topic with id '%s'" % topic_id)
     url = ('core/topic/%s' % topic_id)
-    response = write_request(url, method='DELETE', expect_json=False)
+    response = delete_request(url)
     return(response)
 
 
@@ -1276,8 +1287,7 @@ def main(args):
     if argsdict['JSESSIONID']:
         JSESSIONID = (argsdict['JSESSIONID'])
 
-    ## Now we set the URL !!! This may conflict with config_properties and default dmx.cfg
-    ## we should add a bit more if then ...
+    ## if a URL. is entered via command line, then use it.
     if argsdict['URL']:
         if argsdict['URL'] is not None:
             set_host_url(argsdict['URL'])
@@ -1295,7 +1305,7 @@ def main(args):
 
     if argsdict['file']:
         ##
-        ## This function needs rewrinting! The logic of importing data from
+        ## Todo: This function needs rewrinting! The logic of importing data from
         ## json file should be in a separate function.
         ##
         if VERBOSE:
