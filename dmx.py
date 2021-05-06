@@ -56,6 +56,9 @@ import urllib.request
 import urllib.parse
 import urllib.error
 import http.cookiejar
+from timeit import default_timer as timer
+from datetime import timedelta
+
 
 ## define global variables
 VERBOSE = False     # VERBOSE mode (True|False)
@@ -1462,12 +1465,27 @@ def main(args):
         print('Use -h or --help for more information.')
         parser.exit(1)
 
+    ## How long did it take?
+    try:
+        start_time
+    except NameError:
+        pass
+    else:
+        end_time = timer()
+        if VERBOSE:
+            print("MAIN : Elapsed time:", timedelta(seconds=end_time-start_time))
+    if VERBOSE:
+        print("MAIN : Exit.")
+
+
 
 if __name__ == '__main__':
+    start_time = timer()
     if sys.version_info < (3, 0):
-        print('ERROR! This program requires python version 3 or highter.')
+        print('ERROR! This program requires python version 3 or higher.')
         sys.exit(1)
     else:
         sys.exit(main(sys.argv))
+
 
 ## END.
