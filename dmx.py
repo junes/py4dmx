@@ -464,6 +464,7 @@ def get_ws_id(workspace):
     ## or instance with __index__ (invalid-sequence-index)
     topic = json.loads(json.dumps(response[0]))
     topic_id = topic['id']
+    wsid_cache[workspace] = topic_id
     if VERBOSE:
         print("WS ID = %s" % topic_id)
     return(topic_id)
