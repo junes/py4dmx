@@ -63,7 +63,7 @@ from datetime import timedelta
 ## define global variables
 VERBOSE = False     # VERBOSE mode (True|False)
 JSESSIONID = None   # the first result of get_session_id
-## config = configparser.ConfigParser(allow_no_value=True)
+wsid_cache = {}     # global dictionary to cache worspace ids
 config = configparser.ConfigParser()
 
 
@@ -423,7 +423,6 @@ def delete_request(url):
     """
     if VERBOSE:
         print("DELETE REQUEST : url = %s" % url)
-    # response = get_response(url, payload=None, wsid=None, method='DELETE')
     response = get_response(url, method='DELETE')
     return(response)
 
@@ -433,6 +432,12 @@ def get_ws_id(workspace):
     This function gets the workspace ID for a workspace by its name.
     It's much faster to get it by its uri, if present.
     """
+    global wsid_cache
+    if workspace in wsid_cache:
+        if VERBOSE:
+            print("GET_WS_ID : Workspace ID for workspace %s from cache: %s" % (workspace, wsid_cache[workspace]))
+        return wsid_cache[workspace]
+    ## else
     if VERBOSE:
         print("GET_WS_ID : Searching Workspace ID for workspace %s" % workspace)
     url = ('core/topics/query/"%s"?topicTypeUri=dmx.workspaces.workspace_name'
