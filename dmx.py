@@ -107,8 +107,11 @@ def read_default_config_file():
             print("DEFAULT CONFIG FILE : reading file %s." % config_file)
         config.read(config_file)
     else:
-        print("ERROR! Config file %s not found." % config_file)
-        sys.exit(1)
+        if VERBOSE:
+            print("DEFAULT CONFIG FILE : Config file not found. Creating %s with default settings." % config_file)
+        config_file = open(os.path.join(script_dir, config_file_name),'w')
+        config.write(config_file)
+        config_file.close()
     if VERBOSE:
         for section in config.sections():
             for (key, val) in config.items(section):
