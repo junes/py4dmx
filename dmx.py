@@ -62,6 +62,7 @@ from datetime import timedelta
 
 ## define global variables
 VERBOSE = False     # VERBOSE mode (True|False)
+AUTHTYPE = 'Basic'  # set http authentication header authtype (Basic|LDAP|...)
 JSESSIONID = None   # the first result of get_session_id
 wsid_cache = {}     # global dictionary to cache worspace ids
 config = configparser.ConfigParser()
@@ -362,15 +363,15 @@ def get_session_id():
     global JSESSIONID
     if not JSESSIONID:
         if VERBOSE:
-            print("GET_SESSION_ID : get new id for user %s" %
-                  config.get('Credentials', 'authname'))
+            print("GET_SESSION_ID : get new id for user %s, authtype=%s" %
+                  (config.get('Credentials', 'authname'), AUTHTYPE))
         host_url = get_host_url()
         url = host_url + 'core/topic/0'
         if VERBOSE:
             print("GET_SESSION_ID : url = %s" % url)
         req = urllib.request.Request(url)
         base_64_string = get_base_64()
-        req.add_header("Authorization", "Basic %s" % base_64_string)
+        req.add_header("Authorization", "%s %s" % (AUTHTYPE, base_64_string))
         req.add_header("Content-Type", "application/json")
         cookie_jar = http.cookiejar.CookieJar()
         opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cookie_jar))
@@ -1029,6 +1030,7 @@ def main(args):
     # change_password(user, password, 'new_pass')
     """
     global VERBOSE    # verbose mode (True|False)
+    global AUTHTYPE   # set http authentication header authtype (Basic|LDAP|...)
     global JSESSIONID # can be entered via command line
     global config     # the gloabl server access params
 
@@ -1037,6 +1039,13 @@ def main(args):
         for DMX by Juergen Neumann <juergen@dmx.systems>. It is free \
         software licensed under the GNU General Public License Version 3 \
         and comes with ABSOLUTELY NO WARRANTY.'
+    )
+    parser.add_argument(
+        '-A', '--AUTHTYPE',
+        type=str,
+        help='Set http authentication header (Basic|LDAP|...).',
+        required=False,
+        default='Basic'
     )
     parser.add_argument(
         '-b', '--by_type',
@@ -1277,6 +1286,10 @@ def main(args):
     ## enable VERBOSE mode
     if argsdict['VERBOSE']:
         VERBOSE = True
+
+    ## set http authentication header authtype (Basic|LDAP|...)
+    if argsdict['AUTHTYPE']:
+        AUTHTYPE = (argsdict['AUTHTYPE'])
 
     ## create initial config instance from ConfigParser with defaults
     create_default_config()
