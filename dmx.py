@@ -653,6 +653,17 @@ def create_assoc(payload, workspace=None):
     return(assoc_id)
 
 
+def send_get(url):
+    """
+    This function sends a GET request to custom (a plugin) REST resource.
+    """
+    ## if workspace in None, the default workspace should come from config:
+    if VERBOSE:
+        print("SEND GET : Sending GET to '%s'" % url)
+    response = get_response(url)
+    return(response)
+
+
 def send_post(url, workspace=None):
     """
     This function sends a POST request to custom (a plugin) REST resource.
@@ -1194,6 +1205,11 @@ def main(args):
         default=None
     )
     parser.add_argument(
+        '-SG', '--send_get',
+        help='Sends GET request to given resource endpoint.',
+        default=None
+    )
+    parser.add_argument(
         '-SP', '--send_post',
         help='Sends simple POST request to given resource endpoint. \
               Use in conjunction with -w for e.g. triggering imports.',
@@ -1430,8 +1446,8 @@ def main(args):
         else:
             print("ERROR! Missing username of new member or missing workspace name.")
 
-    if argsdict['send_post']:
-        data = send_post(argsdict['send_post'], argsdict['workspace'])
+    if argsdict['send_get']:
+        data = send_get(argsdict['send_get'])
         pretty_print(data)
 
     if argsdict['delete_topic']:
